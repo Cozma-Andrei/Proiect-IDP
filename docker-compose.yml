@@ -1,0 +1,36 @@
+version: "3.8"
+services:
+  frontend:
+    restart: unless-stopped
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - 3000:3000
+    command: npm run dev
+    environment:
+       - CHOKIDAR_USEPOLLING=true
+  backend:
+    restart: unless-stopped
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend/:/usr/local/apps/myapp/
+    ports:
+      - 5000:3000
+    command: npm run dev
+    depends_on:
+      - mongo
+  mongo:
+    restart: unless-stopped
+    image: mongo:latest
+    ports:
+      - 27017:27017
+    volumes:
+      - dbdata:/data/db
+volumes:
+  dbdata:
