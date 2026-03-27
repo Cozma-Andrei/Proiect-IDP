@@ -22,12 +22,12 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
 
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     if (!patient) {
-      throw new ResourceNotFoundError('Patient profile not found');
+      throw new ResourceNotFoundError('Profilul de pacient nu a fost găsit');
     }
 
     const doctor = await Doctor.findById(doctorId);
     if (!doctor || !doctor.isVerified) {
-      throw new ResourceNotFoundError('Doctor not found or not verified');
+      throw new ResourceNotFoundError('Doctorul nu a fost găsit sau nu este verificat');
     }
 
     const existingAppointment = await Appointment.findOne({
@@ -37,7 +37,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
     });
 
     if (existingAppointment) {
-      throw new ResourceConflictError('The requested appointment time is already booked');
+      throw new ResourceConflictError('Intervalul orar solicitat pentru programare este deja rezervat');
     }
 
     const appointment = new Appointment({
@@ -52,7 +52,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
     await appointment.save();
 
     res.status(201).send({ 
-      message: 'Appointment scheduled successfully',
+      message: 'Programarea a fost stabilită cu succes',
       appointment: {
         id: appointment._id,
         date: appointment.appointmentDate,
@@ -81,7 +81,7 @@ export const createAppointmentForPatient = async (req: Request, res: Response, n
 
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor || !doctor.isVerified) {
-      throw new ResourceNotFoundError('Doctor profile not found or not verified');
+      throw new ResourceNotFoundError('Profilul de medic nu a fost găsit sau nu este verificat');
     }
 
     let patients: any[] = [];
@@ -108,7 +108,7 @@ export const createAppointmentForPatient = async (req: Request, res: Response, n
     });
 
     if (!patient) {
-      throw new ResourceNotFoundError('Patient not found');
+      throw new ResourceNotFoundError('Pacientul nu a fost găsit');
     }
 
     const existingAppointment = await Appointment.findOne({
@@ -119,7 +119,7 @@ export const createAppointmentForPatient = async (req: Request, res: Response, n
     });
 
     if (existingAppointment) {
-      throw new ResourceConflictError('The requested appointment time is already booked');
+      throw new ResourceConflictError('Intervalul orar solicitat pentru programare este deja rezervat');
     }
 
     const appointment = new Appointment({
@@ -134,7 +134,7 @@ export const createAppointmentForPatient = async (req: Request, res: Response, n
     await appointment.save();
 
     res.status(201).send({
-      message: 'Appointment scheduled successfully',
+      message: 'Programarea a fost stabilită cu succes',
       appointment: {
         id: appointment._id,
         date: appointment.appointmentDate,
@@ -152,7 +152,7 @@ export const getPatientAppointments = async (req: Request, res: Response, next: 
   try {
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     if (!patient) {
-      throw new ResourceNotFoundError('Patient profile not found');
+      throw new ResourceNotFoundError('Profilul de pacient nu a fost găsit');
     }
 
     const appointments = await Appointment.find({ patientId: patient._id })
@@ -169,7 +169,7 @@ export const getDoctorAppointments = async (req: Request, res: Response, next: N
   try {
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor) {
-      throw new ResourceNotFoundError('Doctor profile not found');
+      throw new ResourceNotFoundError('Profilul de doctor nu a fost găsit');
     }
 
     const appointments = await Appointment.find({ doctorId: doctor._id })
@@ -197,12 +197,12 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
 
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor) {
-      throw new ResourceNotFoundError('Doctor profile not found');
+      throw new ResourceNotFoundError('Profilul de doctor nu a fost găsit');
     }
 
     const appointment = await Appointment.findOne({ _id: appointmentId, doctorId: doctor._id });
     if (!appointment) {
-      throw new ResourceNotFoundError('Appointment not found');
+      throw new ResourceNotFoundError('Programarea nu a fost găsită');
     }
 
     appointment.status = status;
@@ -228,24 +228,24 @@ export const cancelAppointment = async (req: Request, res: Response, next: NextF
     
     const appointment = await Appointment.findById(appointmentId);
     if (!appointment) {
-      throw new ResourceNotFoundError('Appointment not found');
+      throw new ResourceNotFoundError('Programarea nu a fost găsită');
     }
 
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     if (!patient || !patient._id.equals(appointment.patientId)) {
-      throw new ResourceNotFoundError('You do not have permission to cancel this appointment');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a anula această programare');
     }
 
     const currentDate = new Date();
     if (appointment.appointmentDate < currentDate) {
-      throw new ResourceInvalidError('Cannot cancel past appointments');
+      throw new ResourceInvalidError('Nu se pot anula programările din trecut');
     }
 
     appointment.status = 'Cancelled';
     await appointment.save();
 
     res.status(200).send({ 
-      message: 'Appointment cancelled successfully',
+      message: 'Programarea a fost anulată cu succes',
       appointment: {
         id: appointment._id,
         date: appointment.appointmentDate,
@@ -263,12 +263,12 @@ export const getAvailableSlots = async (req: Request, res: Response, next: NextF
     const { doctorId, date } = req.query;
     
     if (!doctorId || !date) {
-      throw new ResourceInvalidError('Doctor ID and date are required');
+      throw new ResourceInvalidError('ID-ul medicului și data sunt obligatorii');
     }
 
     const doctor = await Doctor.findById(doctorId);
     if (!doctor || !doctor.isVerified) {
-      throw new ResourceNotFoundError('Doctor not found or not verified');
+      throw new ResourceNotFoundError('Doctorul nu a fost găsit sau nu este verificat');
     }
 
     const bookedAppointments = await Appointment.find({

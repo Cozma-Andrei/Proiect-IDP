@@ -20,12 +20,12 @@ export const createRecommendation = async (req: Request, res: Response, next: Ne
 
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor || !doctor.isVerified) {
-      throw new ResourceNotFoundError('Doctor profile not found or not verified');
+      throw new ResourceNotFoundError('Profilul de medic nu a fost găsit sau nu este verificat');
     }
 
     const patient = await Patient.findById(patientId);
     if (!patient) {
-      throw new ResourceNotFoundError('Patient not found');
+      throw new ResourceNotFoundError('Pacientul nu a fost găsit');
     }
 
     const recommendation = new Recommendation({
@@ -38,7 +38,7 @@ export const createRecommendation = async (req: Request, res: Response, next: Ne
     await recommendation.save();
 
     res.status(201).send({ 
-      message: 'Recommendation created successfully',
+      message: 'Recomandarea a fost creată cu succes',
       recommendation: {
         id: recommendation._id,
         issuedDate: recommendation.issuedDate,
@@ -53,7 +53,7 @@ export const getPatientRecommendations = async (req: Request, res: Response, nex
   try {
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     if (!patient) {
-      throw new ResourceNotFoundError('Patient profile not found');
+      throw new ResourceNotFoundError('Profilul de pacient nu a fost găsit');
     }
 
     const recommendations = await Recommendation.find({ patientId: patient._id })
@@ -70,7 +70,7 @@ export const getDoctorRecommendations = async (req: Request, res: Response, next
   try {
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor || !doctor.isVerified) {
-      throw new ResourceNotFoundError('Doctor profile not found or not verified');
+      throw new ResourceNotFoundError('Profilul de medic nu a fost găsit sau nu este verificat');
     }
 
     const recommendations = await Recommendation.find({ doctorId: doctor._id })
@@ -92,7 +92,7 @@ export const getRecommendationById = async (req: Request, res: Response, next: N
       .populate('patientId', 'firstName lastName birthDate');
     
     if (!recommendation) {
-      throw new ResourceNotFoundError('Recommendation not found');
+      throw new ResourceNotFoundError('Recomandarea nu a fost găsită');
     }
 
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
@@ -102,7 +102,7 @@ export const getRecommendationById = async (req: Request, res: Response, next: N
     const isDoctor = doctor && (doctor._id.equals(recommendation.doctorId) || doctor.isVerified);
     
     if (!isPatient && !isDoctor && req.user?.role !== 'Admin') {
-      throw new ResourceNotFoundError('You do not have permission to access this recommendation');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a accesa această recomandare');
     }
 
     res.status(200).send({ recommendation });
@@ -126,12 +126,12 @@ export const updateRecommendation = async (req: Request, res: Response, next: Ne
 
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor || !doctor.isVerified) {
-      throw new ResourceNotFoundError('Doctor profile not found or not verified');
+      throw new ResourceNotFoundError('Profilul de medic nu a fost găsit sau nu este verificat');
     }
 
     const recommendation = await Recommendation.findOne({ _id: recommendationId, doctorId: doctor._id });
     if (!recommendation) {
-      throw new ResourceNotFoundError('Recommendation not found or you do not have permission to update it');
+      throw new ResourceNotFoundError('Recomandarea nu a fost găsită sau nu aveți permisiunea de a o actualiza');
     }
 
     recommendation.content = content;
@@ -139,7 +139,7 @@ export const updateRecommendation = async (req: Request, res: Response, next: Ne
     await recommendation.save();
 
     res.status(200).send({ 
-      message: 'Recommendation updated successfully',
+      message: 'Recomandarea a fost actualizată cu succes',
       recommendation: {
         id: recommendation._id,
         issuedDate: recommendation.issuedDate,

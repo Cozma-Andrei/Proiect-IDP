@@ -15,7 +15,7 @@ mongoose.set('strictQuery', true);
 
 (async () => {
   try {
-    await mongoose.connect('mongodb+srv://Cozma-Andrei:TwIxIf4sPiMagvYK@cluster0.3rt2eof.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0/carelog');
+    await mongoose.connect('mongodb://localhost:27017/carelog');
     console.log('Conectat la baza de date');
 
     await Patient.deleteMany({});

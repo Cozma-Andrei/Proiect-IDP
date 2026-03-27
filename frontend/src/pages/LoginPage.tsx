@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 
@@ -19,7 +20,19 @@ const LoginPage: React.FC = () => {
       login(token);
     } catch (err: any) {
       console.error(err);
-      setError("Autentificare eșuată. Verificați email-ul și parola.");
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.response?.data && typeof err.response.data === 'object') {
+        const errorMessages = Object.entries(err.response.data)
+          .map(([field, messages]: [string, any]) => {
+            const msgs = Array.isArray(messages) ? messages.join(', ') : messages;
+            return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgs}`;
+          })
+          .join(' | ');
+        setError(errorMessages || "Autentificare eșuată. Verificați email-ul și parola.");
+      } else {
+        setError("Autentificare eșuată. Verificați email-ul și parola.");
+      }
     } finally {
       setLoading(false);
     }
@@ -41,7 +54,12 @@ const LoginPage: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block mb-1 text-sm font-medium">Parola</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm font-medium">Parola</label>
+              <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline">
+                Ai uitat parola?
+              </Link>
+            </div>
             <input
               type="password"
               value={password}

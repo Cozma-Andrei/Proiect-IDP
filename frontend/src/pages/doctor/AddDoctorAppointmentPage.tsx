@@ -26,7 +26,19 @@ const AddDoctorAppointmentPage: React.FC = () => {
       navigate("/doctor/appointments", { replace: true });
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.message || "Crearea programării a eșuat.");
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.response?.data && typeof err.response.data === 'object') {
+        const errorMessages = Object.entries(err.response.data)
+          .map(([field, messages]: [string, any]) => {
+            const msgs = Array.isArray(messages) ? messages.join(', ') : messages;
+            return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgs}`;
+          })
+          .join(' | ');
+        setError(errorMessages || "Crearea programării a eșuat.");
+      } else {
+        setError("Crearea programării a eșuat.");
+      }
     } finally {
       setLoading(false);
     }

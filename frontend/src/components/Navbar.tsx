@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 const Navbar: React.FC = () => {
-  const { token, role, logout } = useAuth();
+  const { token, activeProfile, hasDoctorProfile, hasPatientProfile, logout } = useAuth();
 
   const handleLogout = () => {
     logout();
@@ -12,7 +12,7 @@ const Navbar: React.FC = () => {
   let linkColorClass = '';
   let linkHoverColorClass = '';
   if (token) {
-    if (role === 'Doctor') {
+    if (activeProfile === 'Doctor') {
       linkColorClass = 'text-green-700';
       linkHoverColorClass = 'hover:text-green-500';
     } else {
@@ -33,35 +33,32 @@ const Navbar: React.FC = () => {
           </Link>
           {token && (
             <>
-              {role === 'Doctor' && (
-                <>
-                  <Link to="/doctor" className={`mr-4 ${linkHoverColorClass}`}>
-                    Portal Doctor
-                  </Link>
-                  <Link to="/create-patient" className={`mr-4 ${linkHoverColorClass}`}>
-                    Devino Pacient
-                  </Link>
-                </>
+              {activeProfile === 'Admin' && (
+                <Link to="/admin" className={`mr-4 ${linkHoverColorClass}`}>
+                  Portal Admin
+                </Link>
               )}
-              {role === 'Patient' && (
-                <>
-                  <Link to="/patient" className={`mr-4 ${linkHoverColorClass}`}>
-                    Portal Pacient
-                  </Link>
-                  <Link to="/create-doctor" className={`mr-4 ${linkHoverColorClass}`}>
-                    Devino Doctor
-                  </Link>
-                </>
+              {!hasDoctorProfile ? (
+                 <Link to="/create-doctor" className={`mr-4 ${linkHoverColorClass}`}>
+                   Devino Doctor
+                 </Link>
+              ) : (
+                 activeProfile === 'Doctor' && (
+                   <Link to="/doctor" className={`mr-4 ${linkHoverColorClass}`}>
+                     Portal Doctor
+                   </Link>
+                 )
               )}
-              {role === 'User' && (
-                <>
-                  <Link to="/create-patient" className={`mr-4 ${linkHoverColorClass}`}>
-                    Devino Pacient
-                  </Link>
-                  <Link to="/create-doctor" className={`mr-4 ${linkHoverColorClass}`}>
-                    Devino Doctor
-                  </Link>
-                </>
+              {!hasPatientProfile ? (
+                 <Link to="/create-patient" className={`mr-4 ${linkHoverColorClass}`}>
+                   Devino Pacient
+                 </Link>
+              ) : (
+                 activeProfile === 'Patient' && (
+                   <Link to="/patient" className={`mr-4 ${linkHoverColorClass}`}>
+                     Portal Pacient
+                   </Link>
+                 )
               )}
             </>
           )}

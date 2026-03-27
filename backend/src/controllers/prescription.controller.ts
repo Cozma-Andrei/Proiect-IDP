@@ -23,21 +23,21 @@ export const createPrescription = async (req: Request, res: Response, next: Next
 
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor || !doctor.isVerified) {
-      throw new ResourceNotFoundError('Doctor profile not found or not verified');
+      throw new ResourceNotFoundError('Profilul de medic nu a fost găsit sau nu este verificat');
     }
 
     const medicalRecord = await MedicalRecord.findById(medicalRecordId);
     if (!medicalRecord) {
-      throw new ResourceNotFoundError('Medical record not found');
+      throw new ResourceNotFoundError('Înregistrarea medicală nu a fost găsită');
     }
 
     if (!medicalRecord.doctorId.equals(doctor._id)) {
-      throw new ResourceNotFoundError('You do not have permission to create a prescription for this medical record');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a crea o rețetă pentru această înregistrare medicală');
     }
 
     const existingPrescription = await Prescription.findOne({ medicalRecordId });
     if (existingPrescription) {
-      throw new ResourceConflictError('A prescription already exists for this medical record');
+      throw new ResourceConflictError('O rețetă există deja pentru această înregistrare medicală');
     }
 
     const prescription = new Prescription({
@@ -50,7 +50,7 @@ export const createPrescription = async (req: Request, res: Response, next: Next
     await prescription.save();
 
     res.status(201).send({ 
-      message: 'Prescription created successfully',
+      message: 'Rețeta a fost creată cu succes',
       prescription: {
         id: prescription._id,
         medications: prescription.medications,
@@ -66,7 +66,7 @@ export const getPatientPrescriptions = async (req: Request, res: Response, next:
   try {
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     if (!patient) {
-      throw new ResourceNotFoundError('Patient profile not found');
+      throw new ResourceNotFoundError('Profilul de pacient nu a fost găsit');
     }
 
     const medicalRecords = await MedicalRecord.find({ patientId: patient._id })
@@ -111,7 +111,7 @@ export const getPrescriptionById = async (req: Request, res: Response, next: Nex
       });
     
     if (!prescription) {
-      throw new ResourceNotFoundError('Prescription not found');
+      throw new ResourceNotFoundError('Rețeta nu a fost găsită');
     }
 
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
@@ -123,7 +123,7 @@ export const getPrescriptionById = async (req: Request, res: Response, next: Nex
     const isDoctor = doctor && (doctor._id.equals(medicalRecord.doctorId._id) || doctor.isVerified);
     
     if (!isPatient && !isDoctor && req.user?.role !== 'Admin') {
-      throw new ResourceNotFoundError('You do not have permission to access this prescription');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a accesa această rețetă');
     }
 
     res.status(200).send({ prescription });
@@ -147,7 +147,7 @@ export const updatePrescription = async (req: Request, res: Response, next: Next
 
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor || !doctor.isVerified) {
-      throw new ResourceNotFoundError('Doctor profile not found or not verified');
+      throw new ResourceNotFoundError('Profilul de medic nu a fost găsit sau nu este verificat');
     }
 
     const prescription = await Prescription.findById(prescriptionId)
@@ -157,12 +157,12 @@ export const updatePrescription = async (req: Request, res: Response, next: Next
       });
     
     if (!prescription) {
-      throw new ResourceNotFoundError('Prescription not found');
+      throw new ResourceNotFoundError('Rețeta nu a fost găsită');
     }
 
     const medicalRecord = prescription.medicalRecordId as any;
     if (!doctor._id.equals(medicalRecord.doctorId)) {
-        throw new ResourceNotFoundError('You do not have permission to update this prescription');
+        throw new ResourceNotFoundError('Nu aveți permisiunea de a actualiza această rețetă');
     }
 
     if (req.body.medications) prescription.medications = req.body.medications;
@@ -172,7 +172,7 @@ export const updatePrescription = async (req: Request, res: Response, next: Next
     await prescription.save();
 
     res.status(200).send({ 
-      message: 'Prescription updated successfully',
+      message: 'Rețeta a fost actualizată cu succes',
       prescription: {
         id: prescription._id,
         medications: prescription.medications,

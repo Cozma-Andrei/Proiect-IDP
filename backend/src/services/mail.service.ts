@@ -30,8 +30,8 @@ export const sendRegistrationConfirmationEmail = async (email: string, token: st
   const mailOptions = {
     from: process.env.MAIL_USER,
     to: email,
-    subject: 'Registration Confirmation',
-    text: `Please confirm your registration by clicking the following link:\n\n${process.env.FRONTEND_URL}/confirm-registration/${token}`,
+    subject: 'Confirmare Înregistrare - CareLog',
+    text: `Vă rugăm să vă confirmați înregistrarea accesând următorul link:\n\n${process.env.FRONTEND_URL}/confirm-registration/${token}`,
   };
 
   try {
@@ -45,8 +45,8 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
   const mailOptions = {
     from: process.env.MAIL_USER,
     to: email,
-    subject: 'Password Reset Request',
-    text: `You requested a password reset. Please click the following link to reset your password:\n\n${process.env.FRONTEND_URL}/reset-password/${token}`,
+    subject: 'Cerere Resetare Parolă - CareLog',
+    text: `Ați solicitat resetarea parolei. Vă rugăm să accesați următorul link pentru a alege o nouă parolă:\n\n${process.env.FRONTEND_URL}/reset-password/${token}`,
   };
 
   try {

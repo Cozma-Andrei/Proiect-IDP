@@ -1,11 +1,11 @@
 const validationMessages: { [key: string]: string } = {
-    'string.base': 'should be a type of text',
-    'string.empty': 'cannot be an empty field',
-    'string.min': 'should have a minimum length of {#limit}',
+    'string.base': 'trebuie să fie un text',
+    'string.empty': 'nu poate fi un câmp gol',
+    'string.min': 'trebuie să aibă o lungime minimă de {#limit} caractere',
     'string.max': 'should have a minimum length of {#limit}',
-    'string.alphanum': 'must only contain alpha-numeric characters',
-    'string.pattern.base': 'should match the pattern',
-    'any.required': 'is a required field',
+    'string.alphanum': 'trebuie să conțină doar caractere alfanumerice',
+    'string.pattern.base': 'trebuie să respecte formatul',
+    'any.required': 'este un câmp obligatoriu',
 };
 
 export default validationMessages;

@@ -6,7 +6,7 @@ export const sendContactMessage = async (req: Request, res: Response, next: Next
 
   try {
     await sendContactEmail(firstName, lastName, email, message);
-    res.status(200).send({ message: 'Your message has been sent successfully.' });
+    res.status(200).send({ message: 'Mesajul dumneavoastră a fost trimis cu succes.' });
   } catch (error) {
     next(error);
   }

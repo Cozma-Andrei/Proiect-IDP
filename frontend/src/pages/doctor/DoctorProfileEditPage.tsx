@@ -1,26 +1,24 @@
-// src/pages/doctor/DoctorProfileEditPage.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 
 const DoctorProfileEditPage: React.FC = () => {
-  const [firstName,      setFirstName]      = useState("");
-  const [lastName,       setLastName]       = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [specialization, setSpecialization] = useState("");
-  const [phone,          setPhone]          = useState("");
+  const [phone, setPhone] = useState("");
 
-  const [loading, setLoading] = useState(true);   // true până aducem datele
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
-  /* ───────────────── pre-încărcăm profilul ───────────────── */
   useEffect(() => {
     (async () => {
       try {
-        const res = await api.get("/doctor/profile");   // ACELAȘI end-point ca în Home
-        const d   = res.data?.doctor ?? res.data;       // backend-ul tău întoarce .doctor
+        const res = await api.get("/doctor/profile");
+        const d = res.data?.doctor ?? res.data;
         setFirstName(d.firstName || "");
         setLastName(d.lastName || "");
         setSpecialization(d.specialization || "");
@@ -34,7 +32,6 @@ const DoctorProfileEditPage: React.FC = () => {
     })();
   }, []);
 
-  /* ───────────────── submit ───────────────── */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -50,16 +47,24 @@ const DoctorProfileEditPage: React.FC = () => {
       navigate("/", { replace: true });
     } catch (err: any) {
       console.error(err);
-      setError(
-        err.response?.data?.message ||
-        "Actualizarea a eșuat. Încercați din nou."
-      );
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.response?.data && typeof err.response.data === 'object') {
+        const errorMessages = Object.entries(err.response.data)
+          .map(([field, messages]: [string, any]) => {
+            const msgs = Array.isArray(messages) ? messages.join(', ') : messages;
+            return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgs}`;
+          })
+          .join(' | ');
+        setError(errorMessages || "Actualizarea a eșuat. Încercați din nou.");
+      } else {
+        setError("Actualizarea a eșuat. Încercați din nou.");
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  /* ───────────────── UI ───────────────── */
   if (loading)
     return (
       <div className="flex justify-center items-center h-screen">

@@ -10,29 +10,29 @@ export const confirmRegistration = async (req: Request, res: Response, next: Nex
   try {
     const token = req.query?.token as string;
     if (!token) {
-      throw new ResourceInvalidError('Token is required');
+      throw new ResourceInvalidError('Token-ul este obligatoriu');
     }
 
     const jwtSecret: string | undefined = process.env.JWT_SECRET;
     if (!jwtSecret) {
-      throw new ResourceInvalidError('JWT_SECRET is not defined in the environment variables');
+      throw new ResourceInvalidError('JWT_SECRET nu este definit în variabilele de mediu');
     }
 
     const decodedToken = jwt.verify(token, jwtSecret) as { userId: string };
 
     const user = await User.findById(decodedToken.userId);
     if (!user) {
-      throw new ResourceNotFoundError('User not found');
+      throw new ResourceNotFoundError('Utilizatorul nu a fost găsit');
     }
 
     if (user.isConfirmed) {
-      return res.status(400).send({ message: 'User is already confirmed' });
+      return res.status(400).send({ message: 'Utilizatorul este deja confirmat' });
     }
 
     user.isConfirmed = true;
     await user.save();
 
-    res.status(200).send({ message: 'Registration confirmed successfully' });
+    res.status(200).send({ message: 'Înregistrarea a fost confirmată cu succes' });
   } catch (error) {
     next(error);
   }
@@ -42,7 +42,7 @@ export const confirmResetPassword = async (req: Request, res: Response, next: Ne
   try {
     const token = req.query?.token as string;
     if (!token) {
-      throw new ResourceInvalidError('Token is required');
+      throw new ResourceInvalidError('Token-ul este obligatoriu');
     }
 
     const resetPasswordSchema = Joi.object({
@@ -56,21 +56,21 @@ export const confirmResetPassword = async (req: Request, res: Response, next: Ne
 
     const jwtSecret: string | undefined = process.env.JWT_SECRET;
     if (!jwtSecret) {
-      throw new ResourceInvalidError('JWT_SECRET is not defined in the environment variables');
+      throw new ResourceInvalidError('JWT_SECRET nu este definit în variabilele de mediu');
     }
 
     const decodedToken = jwt.verify(token, jwtSecret) as { userId: string };
 
     const user = await User.findById(decodedToken.userId);
     if (!user) {
-      throw new ResourceNotFoundError('User not found');
+      throw new ResourceNotFoundError('Utilizatorul nu a fost găsit');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     user.password = hashedPassword;
     await user.save();
 
-    res.status(200).send({ message: 'Password reset successfully' });
+    res.status(200).send({ message: 'Parola a fost resetată cu succes' });
   } catch (error) {
     next(error);
   }

@@ -21,7 +21,7 @@ export const sendMessage = async (req: Request, res: Response, next: NextFunctio
 
     const receiver = await User.findById(receiverId);
     if (!receiver) {
-      throw new ResourceNotFoundError('Receiver not found');
+      throw new ResourceNotFoundError('Destinatarul nu a fost găsit');
     }
 
     const message = new Message({
@@ -34,7 +34,7 @@ export const sendMessage = async (req: Request, res: Response, next: NextFunctio
     await message.save();
 
     res.status(201).send({ 
-      message: 'Message sent successfully',
+      message: 'Mesajul a fost trimis cu succes',
       sentMessage: {
         id: message._id,
         content: message.content,
@@ -53,7 +53,7 @@ export const getConversation = async (req: Request, res: Response, next: NextFun
 
     const otherUser = await User.findById(otherUserId);
     if (!otherUser) {
-      throw new ResourceNotFoundError('User not found');
+      throw new ResourceNotFoundError('Utilizatorul nu a fost găsit');
     }
 
     const messages = await Message.find({
@@ -132,16 +132,16 @@ export const markMessageAsRead = async (req: Request, res: Response, next: NextF
     
     const message = await Message.findById(messageId);
     if (!message) {
-      throw new ResourceNotFoundError('Message not found');
+      throw new ResourceNotFoundError('Mesajul nu a fost găsit');
     }
 
     if (!message.receiverId.equals(req.user?._id)) {
-      throw new ResourceNotFoundError('You do not have permission to mark this message as read');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a marca acest mesaj ca fiind citit');
     }
 
     await message.save();
 
-    res.status(200).send({ message: 'Message marked as read' });
+    res.status(200).send({ message: 'Mesaj marcat ca citit' });
   } catch (error) {
     next(error);
   }

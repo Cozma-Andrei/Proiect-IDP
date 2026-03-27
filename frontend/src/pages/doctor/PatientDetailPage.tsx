@@ -53,9 +53,21 @@ const PatientDetailPage: React.FC = () => {
       const res = await api.get(`/medicalRecord/patient/${patientId}`);
       setRecords(res.data.medicalRecords || res.data.records || []);
       setNewRecord({ diagnosis: "", observations: "", recommendedTreatment: "" });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Eroare la adăugarea înregistrării medicale.");
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.response?.data && typeof err.response.data === 'object') {
+        const errorMessages = Object.entries(err.response.data)
+          .map(([field, messages]: [string, any]) => {
+            const msgs = Array.isArray(messages) ? messages.join(', ') : messages;
+            return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgs}`;
+          })
+          .join(' | ');
+        setError(errorMessages || "Eroare la adăugarea înregistrării medicale.");
+      } else {
+        setError("Eroare la adăugarea înregistrării medicale.");
+      }
     }
   };
 
@@ -76,9 +88,21 @@ const PatientDetailPage: React.FC = () => {
       });
       setMessage("Rețetă adăugată cu succes.");
       setNewPrescription({ recordId: "", medications: "", dosage: "", observations: "" });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Eroare la adăugarea rețetei.");
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.response?.data && typeof err.response.data === 'object') {
+        const errorMessages = Object.entries(err.response.data)
+          .map(([field, messages]: [string, any]) => {
+            const msgs = Array.isArray(messages) ? messages.join(', ') : messages;
+            return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgs}`;
+          })
+          .join(' | ');
+        setError(errorMessages || "Eroare la adăugarea rețetei.");
+      } else {
+        setError("Eroare la adăugarea rețetei.");
+      }
     }
   };
 
@@ -94,9 +118,21 @@ const PatientDetailPage: React.FC = () => {
       await api.post('/recommendation', { patientId: patient?._id, content: newRec.content });
       setMessage("Recomandare emisă pacientului.");
       setNewRec({ content: "" });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Eroare la trimiterea recomandării.");
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.response?.data && typeof err.response.data === 'object') {
+        const errorMessages = Object.entries(err.response.data)
+          .map(([field, messages]: [string, any]) => {
+            const msgs = Array.isArray(messages) ? messages.join(', ') : messages;
+            return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgs}`;
+          })
+          .join(' | ');
+        setError(errorMessages || "Eroare la trimiterea recomandării.");
+      } else {
+        setError("Eroare la trimiterea recomandării.");
+      }
     }
   };
 

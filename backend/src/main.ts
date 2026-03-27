@@ -14,9 +14,7 @@ const mongoPath = process.env.MONGO_URI || 'mongodb://0.0.0.0:27017/careLog';
 
 app.enable('trust proxy');
 
-if (process.env.NODE_ENV !== 'PROD') {
-  app.use(cors());
-}
+app.use(cors());
 
 app.use(express.json());
 app.use(bodyParser.raw());

@@ -36,7 +36,19 @@ const CreatePatientPage: React.FC = () => {
       logout();
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.message || 'Crearea profilului a eșuat. Încercați din nou.');
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.response?.data && typeof err.response.data === 'object') {
+        const errorMessages = Object.entries(err.response.data)
+          .map(([field, messages]: [string, any]) => {
+            const msgs = Array.isArray(messages) ? messages.join(', ') : messages;
+            return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgs}`;
+          })
+          .join(' | ');
+        setError(errorMessages || 'Crearea profilului a eșuat. Încercați din nou.');
+      } else {
+        setError('Crearea profilului a eșuat. Încercați din nou.');
+      }
     } finally {
       setLoading(false);
     }

@@ -22,12 +22,12 @@ export const createMedicalRecord = async (req: Request, res: Response, next: Nex
 
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor || !doctor.isVerified) {
-      throw new ResourceNotFoundError('Doctor profile not found or not verified');
+      throw new ResourceNotFoundError('Profilul de medic nu a fost găsit sau nu este verificat');
     }
 
     const patient = await Patient.findById(patientId);
     if (!patient) {
-      throw new ResourceNotFoundError('Patient not found');
+      throw new ResourceNotFoundError('Pacientul nu a fost găsit');
     }
 
     const medicalRecord = new MedicalRecord({
@@ -42,7 +42,7 @@ export const createMedicalRecord = async (req: Request, res: Response, next: Nex
     await medicalRecord.save();
 
     res.status(201).send({ 
-      message: 'Medical record created successfully',
+      message: 'Înregistrarea medicală a fost creată cu succes',
       medicalRecord: {
         id: medicalRecord._id,
         date: medicalRecord.recordDate,
@@ -58,7 +58,7 @@ export const getPatientMedicalRecords = async (req: Request, res: Response, next
   try {
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     if (!patient) {
-      throw new ResourceNotFoundError('Patient profile not found');
+      throw new ResourceNotFoundError('Profilul de pacient nu a fost găsit');
     }
 
     const medicalRecords = await MedicalRecord.find({ patientId: patient._id })
@@ -77,7 +77,7 @@ export const getMedicalRecordsByPatientId = async (req: Request, res: Response, 
 
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor || !doctor.isVerified) {
-      throw new ResourceNotFoundError('Doctor profile not found or not verified');
+      throw new ResourceNotFoundError('Profilul de medic nu a fost găsit sau nu este verificat');
     }
 
     let patients: any[] = [];
@@ -104,7 +104,7 @@ export const getMedicalRecordsByPatientId = async (req: Request, res: Response, 
     });
 
     if (!patient) {
-      throw new ResourceNotFoundError('Patient not found');
+      throw new ResourceNotFoundError('Pacientul nu a fost găsit');
     }
 
     const medicalRecords = await MedicalRecord.find({ patientId: patient._id })
@@ -126,7 +126,7 @@ export const getMedicalRecordById = async (req: Request, res: Response, next: Ne
       .populate('patientId', 'firstName lastName birthDate');
     
     if (!medicalRecord) {
-      throw new ResourceNotFoundError('Medical record not found');
+      throw new ResourceNotFoundError('Înregistrarea medicală nu a fost găsită');
     }
 
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
@@ -136,7 +136,7 @@ export const getMedicalRecordById = async (req: Request, res: Response, next: Ne
     const isDoctor = doctor && (doctor._id.equals(medicalRecord.doctorId) || doctor.isVerified);
     
     if (!isPatient && !isDoctor && req.user?.role !== 'Admin') {
-      throw new ResourceNotFoundError('You do not have permission to access this medical record');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a accesa această înregistrare medicală');
     }
 
     res.status(200).send({ medicalRecord });
@@ -160,12 +160,12 @@ export const updateMedicalRecord = async (req: Request, res: Response, next: Nex
 
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor || !doctor.isVerified) {
-      throw new ResourceNotFoundError('Doctor profile not found or not verified');
+      throw new ResourceNotFoundError('Profilul de medic nu a fost găsit sau nu este verificat');
     }
 
     const medicalRecord = await MedicalRecord.findOne({ _id: recordId, doctorId: doctor._id });
     if (!medicalRecord) {
-      throw new ResourceNotFoundError('Medical record not found or you do not have permission to update it');
+      throw new ResourceNotFoundError('Înregistrarea medicală nu a fost găsită sau nu aveți permisiunea de a o actualiza');
     }
 
     if (req.body.diagnosis) medicalRecord.diagnosis = req.body.diagnosis;
@@ -175,7 +175,7 @@ export const updateMedicalRecord = async (req: Request, res: Response, next: Nex
     await medicalRecord.save();
 
     res.status(200).send({ 
-      message: 'Medical record updated successfully',
+      message: 'Înregistrarea medicală a fost actualizată cu succes',
       medicalRecord: {
         id: medicalRecord._id,
         date: medicalRecord.recordDate,

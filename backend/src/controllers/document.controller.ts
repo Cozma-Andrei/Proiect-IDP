@@ -10,7 +10,7 @@ import validationMessages from '../common/errors/validation.messages';
 export const uploadDocument = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.file) {
-      throw new ResourceInvalidError('No file uploaded');
+      throw new ResourceInvalidError('Niciun fișier încărcat');
     }
 
     const documentSchema = Joi.object({
@@ -25,7 +25,7 @@ export const uploadDocument = async (req: Request, res: Response, next: NextFunc
 
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     if (!patient) {
-      throw new ResourceNotFoundError('Patient profile not found');
+      throw new ResourceNotFoundError('Profilul de pacient nu a fost găsit');
     }
 
     const document = new Document({
@@ -38,7 +38,7 @@ export const uploadDocument = async (req: Request, res: Response, next: NextFunc
     await document.save();
 
     res.status(201).send({ 
-      message: 'Document uploaded successfully',
+      message: 'Documentul a fost încărcat cu succes',
       document: {
         id: document._id,
         documentType: document.documentType,
@@ -60,7 +60,7 @@ export const getPatientDocuments = async (req: Request, res: Response, next: Nex
   try {
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     if (!patient) {
-      throw new ResourceNotFoundError('Patient profile not found');
+      throw new ResourceNotFoundError('Profilul de pacient nu a fost găsit');
     }
 
     const documents = await Document.find({ patientId: patient._id })
@@ -78,7 +78,7 @@ export const getPatientDocumentsByDoctorView = async (req: Request, res: Respons
 
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor || !doctor.isVerified) {
-      throw new ResourceNotFoundError('Doctor profile not found or not verified');
+      throw new ResourceNotFoundError('Profilul de medic nu a fost găsit sau nu este verificat');
     }
 
     let patients: any[] = [];
@@ -105,7 +105,7 @@ export const getPatientDocumentsByDoctorView = async (req: Request, res: Respons
     });
 
     if (!patient) {
-      throw new ResourceNotFoundError('Patient not found');
+      throw new ResourceNotFoundError('Pacientul nu a fost găsit');
     }
 
     const documents = await Document.find({ patientId: patient._id })
@@ -123,7 +123,7 @@ export const getDocumentById = async (req: Request, res: Response, next: NextFun
     
     const document = await Document.findById(documentId);
     if (!document) {
-      throw new ResourceNotFoundError('Document not found');
+      throw new ResourceNotFoundError('Documentul nu a fost găsit');
     }
 
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
@@ -133,12 +133,12 @@ export const getDocumentById = async (req: Request, res: Response, next: NextFun
     const isDoctor = doctor && doctor.isVerified;
     
     if (!isPatient && !isDoctor && req.user?.role !== 'Admin') {
-      throw new ResourceNotFoundError('You do not have permission to access this document');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a accesa acest document');
     }
 
     const filePath = document.documentPath;
     if (!fs.existsSync(filePath)) {
-      throw new ResourceNotFoundError('Document file not found');
+      throw new ResourceNotFoundError('Fișierul documentului nu a fost găsit');
     }
 
     res.download(filePath);
@@ -153,12 +153,12 @@ export const deleteDocument = async (req: Request, res: Response, next: NextFunc
     
     const document = await Document.findById(documentId);
     if (!document) {
-      throw new ResourceNotFoundError('Document not found');
+      throw new ResourceNotFoundError('Documentul nu a fost găsit');
     }
 
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     if (!patient || !patient._id.equals(document.patientId)) {
-      throw new ResourceNotFoundError('You do not have permission to delete this document');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a șterge acest document');
     }
 
     const filePath = document.documentPath;
@@ -168,7 +168,7 @@ export const deleteDocument = async (req: Request, res: Response, next: NextFunc
 
     await Document.findByIdAndDelete(documentId);
 
-    res.status(200).send({ message: 'Document deleted successfully' });
+    res.status(200).send({ message: 'Documentul a fost șters cu succes' });
   } catch (error) {
     next(error);
   }

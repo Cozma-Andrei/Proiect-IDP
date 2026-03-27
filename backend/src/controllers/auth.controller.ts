@@ -22,7 +22,7 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      throw new ResourceConflictError('Email is already registered');
+      throw new ResourceConflictError('Email-ul este deja înregistrat');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -38,14 +38,14 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
 
     const jwtSecret: string | undefined = process.env.JWT_SECRET;
     if (!jwtSecret) {
-      throw new ResourceInvalidError('JWT_SECRET is not defined in the environment variables');
+      throw new ResourceInvalidError('JWT_SECRET nu este definit în variabilele de mediu');
     }
 
     const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: '24h' });
 
     await sendRegistrationConfirmationEmail(email, token);
 
-    res.status(201).send({ message: 'User registered successfully, please check your email for confirmation.' });
+    res.status(201).send({ message: 'Utilizator înregistrat cu succes, vă rugăm să vă verificați email-ul pentru confirmare.' });
   } catch (error) {
     next(error);
   }
@@ -65,23 +65,23 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
 
     const user = await User.findOne({ email });
     if (!user || !user.isConfirmed) {
-      throw new ResourceNotFoundError('Invalid email or password');
+      throw new ResourceNotFoundError('Email sau parolă incorecte');
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      throw new ResourceNotFoundError('Invalid email or password');
+      throw new ResourceNotFoundError('Email sau parolă incorecte');
     }
 
     const jwtSecret: string | undefined = process.env.JWT_SECRET;
     if (!jwtSecret) {
-      throw new ResourceInvalidError('JWT_SECRET is not defined in the environment variables');
+      throw new ResourceInvalidError('JWT_SECRET nu este definit în variabilele de mediu');
     }
 
     const token = jwt.sign({ ...user }, jwtSecret, { expiresIn: '24h' });
 
     res.status(200).send({
-      message: 'Login successful',
+      message: 'Autentificare cu succes',
       token,
     });
   } catch (error) {
@@ -102,19 +102,19 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
 
     const user = await User.findOne({ email });
     if (!user || !user.isConfirmed) {
-      throw new ResourceNotFoundError('Email not found');
+      throw new ResourceNotFoundError('Email-ul nu a fost găsit');
     }
 
     const jwtSecret: string | undefined = process.env.JWT_SECRET;
     if (!jwtSecret) {
-      throw new ResourceInvalidError('JWT_SECRET is not defined in the environment variables');
+      throw new ResourceInvalidError('JWT_SECRET nu este definit în variabilele de mediu');
     }
 
     const resetToken = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: '24h' });
 
     await sendPasswordResetEmail(email, resetToken);
 
-    res.status(200).send({ message: 'Password reset email sent, please check your email.' });
+    res.status(200).send({ message: 'Email-ul pentru resetarea parolei a fost trimis, vă rugăm să verificați.' });
   } catch (error) {
     next(error);
   }

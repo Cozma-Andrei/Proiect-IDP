@@ -9,21 +9,21 @@ import validationMessages from '../common/errors/validation.messages';
 export const verifyDoctor = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (req.user?.role !== 'Admin') {
-      throw new ResourceNotFoundError('You do not have permission to perform this action');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a efectua această acțiune');
     }
 
     const doctorId = req.params.doctorId;
     
     const doctor = await Doctor.findById(doctorId);
     if (!doctor) {
-      throw new ResourceNotFoundError('Doctor not found');
+      throw new ResourceNotFoundError('Doctorul nu a fost găsit');
     }
 
     doctor.isVerified = true;
     await doctor.save();
 
     res.status(200).send({ 
-      message: 'Doctor has been verified successfully',
+      message: 'Doctorul a fost verificat cu succes',
       doctor: {
         id: doctor._id,
         firstName: doctor.firstName,
@@ -40,7 +40,7 @@ export const verifyDoctor = async (req: Request, res: Response, next: NextFuncti
 export const getAllDoctors = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (req.user?.role !== 'Admin') {
-      throw new ResourceNotFoundError('You do not have permission to perform this action');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a efectua această acțiune');
     }
 
     const doctors = await Doctor.find()
@@ -55,7 +55,7 @@ export const getAllDoctors = async (req: Request, res: Response, next: NextFunct
 export const getAllPatients = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (req.user?.role !== 'Admin') {
-      throw new ResourceNotFoundError('You do not have permission to perform this action');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a efectua această acțiune');
     }
 
     const patients = await Patient.find()
@@ -70,7 +70,7 @@ export const getAllPatients = async (req: Request, res: Response, next: NextFunc
 export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (req.user?.role !== 'Admin') {
-      throw new ResourceNotFoundError('You do not have permission to perform this action');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a efectua această acțiune');
     }
 
     const users = await User.find().select('-password');
@@ -84,14 +84,14 @@ export const getAllUsers = async (req: Request, res: Response, next: NextFunctio
 export const getUserById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (req.user?.role !== 'Admin') {
-      throw new ResourceNotFoundError('You do not have permission to perform this action');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a efectua această acțiune');
     }
 
     const userId = req.params.userId;
     
     const user = await User.findById(userId).select('-password');
     if (!user) {
-      throw new ResourceNotFoundError('User not found');
+      throw new ResourceNotFoundError('Utilizatorul nu a fost găsit');
     }
 
     let profile = null;
@@ -113,7 +113,7 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
 export const updateUserRole = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (req.user?.role !== 'Admin') {
-      throw new ResourceNotFoundError('You do not have permission to perform this action');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a efectua această acțiune');
     }
 
     const userId = req.params.userId;
@@ -134,7 +134,7 @@ export const updateUserRole = async (req: Request, res: Response, next: NextFunc
     ).select('-password');
 
     if (!user) {
-      throw new ResourceNotFoundError('User not found');
+      throw new ResourceNotFoundError('Utilizatorul nu a fost găsit');
     }
 
     res.status(200).send({ 
@@ -149,21 +149,21 @@ export const updateUserRole = async (req: Request, res: Response, next: NextFunc
 export const deactivateUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (req.user?.role !== 'Admin') {
-      throw new ResourceNotFoundError('You do not have permission to perform this action');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a efectua această acțiune');
     }
 
     const userId = req.params.userId;
     
     const user = await User.findById(userId);
     if (!user) {
-      throw new ResourceNotFoundError('User not found');
+      throw new ResourceNotFoundError('Utilizatorul nu a fost găsit');
     }
 
     // We don't want to actually delete users, but we can mark them as inactive
     user.isConfirmed = false; // Using isConfirmed as a way to deactivate
     await user.save();
 
-    res.status(200).send({ message: 'User has been deactivated successfully' });
+    res.status(200).send({ message: 'Utilizatorul a fost dezactivat cu succes' });
   } catch (error) {
     next(error);
   }
@@ -172,7 +172,7 @@ export const deactivateUser = async (req: Request, res: Response, next: NextFunc
 export const getSystemStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (req.user?.role !== 'Admin') {
-      throw new ResourceNotFoundError('You do not have permission to perform this action');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a efectua această acțiune');
     }
 
     const userCount = await User.countDocuments();

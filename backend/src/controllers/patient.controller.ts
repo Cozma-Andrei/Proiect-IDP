@@ -26,7 +26,7 @@ export const createPatient = async (req: Request, res: Response, next: NextFunct
 
     const existingPatient = await Patient.findOne({ nationalId });
     if (existingPatient) {
-      throw new ResourceConflictError('Patient with this national ID already exists');
+      throw new ResourceConflictError('Pacientul cu acest CNP există deja');
     }
 
     const patient = new Patient({
@@ -51,7 +51,7 @@ export const createPatient = async (req: Request, res: Response, next: NextFunct
     }
 
     res.status(201).send({
-      message: 'Patient profile created successfully',
+      message: 'Profilul pacientului a fost creat cu succes',
       patient: {
         id: patient._id,
         firstName: patient.firstName,
@@ -67,7 +67,7 @@ export const getPatientProfile = async (req: Request, res: Response, next: NextF
   try {
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     if (!patient) {
-      throw new ResourceNotFoundError('Patient profile not found');
+      throw new ResourceNotFoundError('Profilul de pacient nu a fost găsit');
     }
 
     res.status(200).send({ patient });
@@ -92,7 +92,7 @@ export const updatePatientProfile = async (req: Request, res: Response, next: Ne
 
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     if (!patient) {
-      throw new ResourceNotFoundError('Patient profile not found');
+      throw new ResourceNotFoundError('Profilul de pacient nu a fost găsit');
     }
 
     const updatedPatient = await Patient.findByIdAndUpdate(
@@ -102,7 +102,7 @@ export const updatePatientProfile = async (req: Request, res: Response, next: Ne
     );
 
     res.status(200).send({
-      message: 'Patient profile updated successfully',
+      message: 'Profilul pacientului a fost actualizat cu succes',
       patient: updatedPatient
     });
   } catch (error) {
@@ -142,7 +142,7 @@ export const viewMedicalData = async (req: Request, res: Response, next: NextFun
     if (!patient) {
       patient = await Patient.findOne({ userAccountId: userId });
       if (!patient) {
-        throw new ResourceNotFoundError('Patient not found');
+        throw new ResourceNotFoundError('Pacientul nu a fost găsit');
       }
     }
 
@@ -150,7 +150,7 @@ export const viewMedicalData = async (req: Request, res: Response, next: NextFun
     const isAdminOrDoctor = req.user?.role === 'Doctor' || req.user?.role === 'Admin';
 
     if (!isOwner && !isAdminOrDoctor) {
-      throw new ResourceNotFoundError('You do not have permission to access this data');
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a accesa aceste date');
     }
 
     res.status(200).send({

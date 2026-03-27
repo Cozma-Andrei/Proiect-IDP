@@ -52,9 +52,21 @@ const PatientAppointmentsPage: React.FC = () => {
       setMessage("Programare creată cu succes.");
       setForm({ doctorId: "", date: "", time: "", notes: "" });
       fetchAppointments();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Eroare la crearea programării. Verificați datele introduse.");
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.response?.data && typeof err.response.data === 'object') {
+        const errorMessages = Object.entries(err.response.data)
+          .map(([field, messages]: [string, any]) => {
+            const msgs = Array.isArray(messages) ? messages.join(', ') : messages;
+            return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgs}`;
+          })
+          .join(' | ');
+        setError(errorMessages || "Eroare la crearea programării. Verificați datele introduse.");
+      } else {
+        setError("Eroare la crearea programării. Verificați datele introduse.");
+      }
     }
   };
 

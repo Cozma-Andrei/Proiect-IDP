@@ -21,7 +21,7 @@ export const createDoctorProfile = async (req: Request, res: Response, next: Nex
 
     const existingDoctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (existingDoctor) {
-      throw new ResourceConflictError('Doctor profile already exists for this user');
+      throw new ResourceConflictError('Profilul de doctor există deja pentru acest utilizator');
     }
 
     const doctor = new Doctor({
@@ -42,7 +42,7 @@ export const createDoctorProfile = async (req: Request, res: Response, next: Nex
     }
 
     res.status(201).send({ 
-      message: 'Doctor profile created successfully. It will be reviewed for verification.',
+      message: 'Profilul de doctor a fost creat cu succes. Acesta va fi analizat pentru verificare.',
       doctor: {
         id: doctor._id,
         firstName: doctor.firstName,
@@ -59,7 +59,7 @@ export const getDoctorProfile = async (req: Request, res: Response, next: NextFu
   try {
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor) {
-      throw new ResourceNotFoundError('Doctor profile not found');
+      throw new ResourceNotFoundError('Profilul de doctor nu a fost găsit');
     }
 
     res.status(200).send({ doctor });
@@ -82,7 +82,7 @@ export const updateDoctorProfile = async (req: Request, res: Response, next: Nex
 
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor) {
-      throw new ResourceNotFoundError('Doctor profile not found');
+      throw new ResourceNotFoundError('Profilul de doctor nu a fost găsit');
     }
 
     const updatedDoctor = await Doctor.findByIdAndUpdate(
@@ -92,7 +92,7 @@ export const updateDoctorProfile = async (req: Request, res: Response, next: Nex
     );
 
     res.status(200).send({ 
-      message: 'Doctor profile updated successfully',
+      message: 'Profilul de doctor a fost actualizat cu succes',
       doctor: updatedDoctor
     });
   } catch (error) {
@@ -118,7 +118,7 @@ export const getDoctorById = async (req: Request, res: Response, next: NextFunct
       .select('firstName lastName specialization');
     
     if (!doctor) {
-      throw new ResourceNotFoundError('Doctor not found');
+      throw new ResourceNotFoundError('Doctorul nu a fost găsit');
     }
 
     res.status(200).send({ doctor });
