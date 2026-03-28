@@ -20,6 +20,16 @@ const CreatePatientPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    if (!firstName || !lastName || !phone || !birthDate || !gender || !address || !nationalId || !medicalHistory || !allergies) {
+      setError('Toate câmpurile sunt obligatorii.');
+      setLoading(false);
+      return;
+    }
+    if (nationalId.length !== 13) {
+      setError('CNP-ul trebuie să aibă exact 13 cifre.');
+      setLoading(false);
+      return;
+    }
     try {
       const response = await api.post('/patient', {
         firstName,
@@ -129,8 +139,15 @@ const CreatePatientPage: React.FC = () => {
             <input
               type="text"
               value={nationalId}
-              onChange={e => setNationalId(e.target.value)}
+              onChange={e => {
+                const value = e.target.value.replace(/\D/g, ''); // Keep only digits
+                if (value.length <= 13) setNationalId(value);
+              }}
               required
+              minLength={13}
+              maxLength={13}
+              pattern="\d{13}"
+              placeholder="13 cifre"
               className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -139,6 +156,7 @@ const CreatePatientPage: React.FC = () => {
             <textarea
               value={medicalHistory}
               onChange={e => setMedicalHistory(e.target.value)}
+              required
               className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={3}
             />
@@ -148,6 +166,7 @@ const CreatePatientPage: React.FC = () => {
             <textarea
               value={allergies}
               onChange={e => setAllergies(e.target.value)}
+              required
               className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={2}
             />

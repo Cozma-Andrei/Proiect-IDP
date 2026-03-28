@@ -1,0 +1,15 @@
+# Environment Variables
+.env
+
+# Node modules
+node_modules/
+dist/
+build/
+.cache/
+
+# Docker
+.docker/
+
+# OS files
+.DS_Store
+Thumbs.db

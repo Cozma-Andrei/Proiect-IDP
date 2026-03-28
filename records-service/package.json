@@ -1,0 +1,32 @@
+{
+  "name": "records-service",
+  "version": "1.0.0",
+  "description": "CareLog Records Microservice - Medical Database CRUD",
+  "main": "dist/main.js",
+  "scripts": {
+    "start": "tsc && node dist/main.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "seed": "npx ts-node src/models/seed.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^9.8.0",
+    "axios": "^1.7.0",
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "joi": "^18.1.1",
+    "mongoose": "^7.4.3"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.17",
+    "@types/node": "^20.4.2",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^6.0.2"
+  }
+}

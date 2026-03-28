@@ -1,5 +1,7 @@
 version: "3.8"
+
 services:
+  # ─── Frontend ──────────────────────────────────────────
   frontend:
     restart: unless-stopped
     build:
@@ -12,25 +14,140 @@ services:
       - 3000:3000
     command: npm run dev
     environment:
-       - CHOKIDAR_USEPOLLING=true
-  backend:
+      - CHOKIDAR_USEPOLLING=true
+    networks:
+      - frontend
+
+  # ─── Auth Service (port 5001) ──────────────────────────
+  auth-service:
     restart: unless-stopped
     build:
-      context: ./backend
+      context: ./auth-service
       dockerfile: Dockerfile
     volumes:
-      - ./backend/:/usr/local/apps/myapp/
+      - ./auth-service:/usr/local/apps/auth-service
+      - /usr/local/apps/auth-service/node_modules
     ports:
-      - 5000:3000
+      - 5001:5001
     command: npm run dev
     depends_on:
-      - mongo
-  mongo:
+      - auth-db
+    environment:
+      - NODE_ENV=DEV
+      - PORT=5001
+      - MONGO_URI=mongodb://auth-db:27017/careLog_auth
+      - FRONTEND_URL=http://localhost:3000
+      - MAIL_USER=${MAIL_USER}
+      - MAIL_PASS=${MAIL_PASS}
+      - JWT_SECRET=${JWT_SECRET}
+      - RECORDS_SERVICE_URL=http://records-service:5003
+    networks:
+      - frontend
+      - backend
+
+  # ─── Medical Service (port 5002) ───────────────────────
+  medical-service:
+    restart: unless-stopped
+    build:
+      context: ./medical-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./medical-service:/usr/local/apps/medical-service
+      - /usr/local/apps/medical-service/node_modules
+    ports:
+      - 5002:5002
+    command: npm run dev
+    environment:
+      - NODE_ENV=DEV
+      - PORT=5002
+      - JWT_SECRET=${JWT_SECRET}
+      - RECORDS_SERVICE_URL=http://records-service:5003
+      - IO_SERVICE_URL=http://io-service:5004
+      - AUTH_SERVICE_URL=http://auth-service:5001
+    depends_on:
+      - records-service
+      - io-service
+    networks:
+      - frontend
+      - backend
+
+  # ─── Records Service (port 5003) ───────────────────────
+  records-service:
+    restart: unless-stopped
+    build:
+      context: ./records-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./records-service:/usr/local/apps/records-service
+      - /usr/local/apps/records-service/node_modules
+    ports:
+      - 5003:5003
+    command: npm run dev
+    depends_on:
+      - medical-db
+    environment:
+      - NODE_ENV=DEV
+      - PORT=5003
+      - MONGO_URI=mongodb://medical-db:27017/careLog_medical
+      - AUTH_MONGO_URI=mongodb://auth-db:27017/careLog_auth
+      - IO_SERVICE_URL=http://io-service:5004
+    networks:
+      - backend
+      - data
+
+  # ─── IO Service (port 5004) ────────────────────────────
+  io-service:
+    restart: unless-stopped
+    build:
+      context: ./io-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./io-service:/usr/local/apps/io-service
+      - /usr/local/apps/io-service/node_modules
+    ports:
+      - 5004:5004
+    command: npm run dev
+    environment:
+      - NODE_ENV=DEV
+      - PORT=5004
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}
+    networks:
+      - backend
+
+  # ─── Databases ─────────────────────────────────────────
+  auth-db:
     restart: unless-stopped
     image: mongo:latest
     ports:
-      - 27017:27017
+      - 27018:27017
     volumes:
-      - dbdata:/data/db
+      - auth-dbdata:/data/db
+    networks:
+      - backend
+      - data
+
+  medical-db:
+    restart: unless-stopped
+    image: mongo:latest
+    ports:
+      - 27019:27017
+    volumes:
+      - medical-dbdata:/data/db
+    networks:
+      - backend
+      - data
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+  data:
+    driver: bridge
+
 volumes:
-  dbdata:
+  auth-dbdata:
+  medical-dbdata:

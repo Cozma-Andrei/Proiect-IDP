@@ -16,6 +16,7 @@ const AddDoctorAppointmentPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!patientId) { setError("Introduceți CNP-ul pacientului!"); return; }
+    if (patientId.length !== 13) { setError("CNP-ul trebuie să aibă exact 13 cifre!"); return; }
 
     setError(null);
     setLoading(true);
@@ -60,10 +61,13 @@ const AddDoctorAppointmentPage: React.FC = () => {
             <label className="block mb-1 text-sm font-medium">CNP Pacient</label>
             <input
               type="text"
+              value={patientId}
               onChange={(e) => {
-                setPatientId(e.target.value);
+                const value = e.target.value.replace(/\D/g, '').slice(0, 13);
+                setPatientId(value);
               }}
               placeholder="Introduceți CNP (13 cifre)"
+              maxLength={13}
               className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />

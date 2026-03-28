@@ -15,6 +15,11 @@ const CreateDoctorPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    if (!firstName || !lastName || !specialization || !phone) {
+      setError('Toate câmpurile obligatorii trebuie completate.');
+      setLoading(false);
+      return;
+    }
     try {
       const response = await api.post('/doctor', {
         firstName,
@@ -84,8 +89,11 @@ const CreateDoctorPage: React.FC = () => {
             <input
               type="text"
               value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="Ex: +40712345678"
+              onChange={e => {
+                const value = e.target.value.replace(/\D/g, ''); // Keep only digits
+                setPhone(value);
+              }}
+              placeholder="Ex: 0712345678"
               required
               className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
