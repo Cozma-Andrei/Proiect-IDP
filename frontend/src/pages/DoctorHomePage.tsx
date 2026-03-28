@@ -108,7 +108,7 @@ const DoctorHomePage: React.FC = () => {
               <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
-              Programări urgente
+              Programări
             </h2>
           </div>
           <div className="p-6">
@@ -122,23 +122,12 @@ const DoctorHomePage: React.FC = () => {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="font-medium text-gray-800">
-                          {new Date(appt.appointmentDate).toLocaleDateString('ro-RO', {
-                            day: 'numeric',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          {new Date(appt.appointmentDate).toLocaleDateString('ro-RO')} la {appt.time}
                         </p>
                         <p className="text-sm text-gray-600 mt-1">
                           {(appt.patientId as any)?.firstName} {(appt.patientId as any)?.lastName}
                         </p>
                       </div>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        appt.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                        appt.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {appt.status}
-                      </span>
                     </div>
                   </li>
                 ))}

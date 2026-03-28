@@ -59,7 +59,7 @@ export const getDoctorProfile = async (req: Request, res: Response, next: NextFu
   try {
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
     if (!doctor) {
-      throw new ResourceNotFoundError('Profilul de doctor nu a fost găsit');
+      return res.status(200).send({ doctor: null });
     }
 
     res.status(200).send({ doctor });
@@ -103,7 +103,7 @@ export const updateDoctorProfile = async (req: Request, res: Response, next: Nex
 export const getAllDoctors = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const doctors = await Doctor.find({ isVerified: true })
-      .select('firstName lastName specialization');
+      .select('firstName lastName specialization userAccountId');
 
     res.status(200).send({ doctors });
   } catch (error) {

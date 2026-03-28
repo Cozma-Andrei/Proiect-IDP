@@ -38,27 +38,25 @@ const Navbar: React.FC = () => {
                   Portal Admin
                 </Link>
               )}
-              {!hasDoctorProfile ? (
-                 <Link to="/create-doctor" className={`mr-4 ${linkHoverColorClass}`}>
-                   Devino Doctor
-                 </Link>
-              ) : (
-                 activeProfile === 'Doctor' && (
-                   <Link to="/doctor" className={`mr-4 ${linkHoverColorClass}`}>
-                     Portal Doctor
-                   </Link>
-                 )
+              {hasDoctorProfile && activeProfile === 'Doctor' && (
+                <Link to="/doctor" className={`mr-4 ${linkHoverColorClass}`}>
+                  Portal Doctor
+                </Link>
               )}
-              {!hasPatientProfile ? (
-                 <Link to="/create-patient" className={`mr-4 ${linkHoverColorClass}`}>
-                   Devino Pacient
-                 </Link>
-              ) : (
-                 activeProfile === 'Patient' && (
-                   <Link to="/patient" className={`mr-4 ${linkHoverColorClass}`}>
-                     Portal Pacient
-                   </Link>
-                 )
+              {hasPatientProfile && activeProfile === 'Patient' && (
+                <Link to="/patient" className={`mr-4 ${linkHoverColorClass}`}>
+                  Portal Pacient
+                </Link>
+              )}
+              {!hasDoctorProfile && (
+                <Link to="/create-doctor" className={`mr-4 ${linkHoverColorClass}`}>
+                  Devino Doctor
+                </Link>
+              )}
+              {!hasPatientProfile && (
+                <Link to="/create-patient" className={`mr-4 ${linkHoverColorClass}`}>
+                  Devino Pacient
+                </Link>
               )}
             </>
           )}

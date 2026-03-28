@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import { faker } from '@faker-js/faker';
+import fs from 'fs';
+import path from 'path';
 import User, { IUser } from './user.model';
 import Patient, { IPatient } from './patient.model';
 import Doctor, { IDoctor } from './doctor.model';
@@ -10,12 +12,16 @@ import Message from './message.model';
 import Prescription from './prescription.model';
 import Recommendation from './recommendation.model';
 import bcrypt from 'bcrypt';
+import dotenv from 'dotenv';
+import { uploadToS3 } from '../services/aws.s3.service';
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 mongoose.set('strictQuery', true);
 
 (async () => {
   try {
-    await mongoose.connect('mongodb://localhost:27017/carelog');
+    await mongoose.connect('mongodb://localhost:27017/careLog');
     console.log('Conectat la baza de date');
 
     await Patient.deleteMany({});
@@ -92,12 +98,23 @@ mongoose.set('strictQuery', true);
       });
       const phone = '07' + faker.string.numeric(8);
       const specialization = faker.helpers.arrayElement(specializations);
+      
+      const availableSlots: string[] = [];
+      const startHour = faker.number.int({ min: 8, max: 13 });
+      const durationHours = faker.number.int({ min: 4, max: 6 });
+      for (let h = startHour; h < startHour + durationHours; h++) {
+        for (let m = 0; m < 60; m += 30) {
+          availableSlots.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+        }
+      }
+
       doctorProfilesData.push({
         firstName,
         lastName,
         phone,
         specialization,
-        isVerified: true
+        isVerified: true,
+        availableSlots
       });
     }
     const createdDoctorUsers = await User.insertMany(doctorUsersData);
@@ -108,22 +125,26 @@ mongoose.set('strictQuery', true);
     console.log(`Au fost create ${createdDoctors.length} profiluri de doctori și conturile lor de utilizator.`);
 
     const appointmentsData = [];
-    const statusOptions = ['Scheduled', 'Completed', 'Cancelled', 'Pending', 'Confirmed'];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 20; i++) {
       const patient = faker.helpers.arrayElement(createdPatients);
       const doctor = faker.helpers.arrayElement(createdDoctors);
-      const appointmentDate = faker.date.between({ from: new Date('2025-06-06'), to: new Date('2025-12-12') });
-      const hour = faker.number.int({ min: 8, max: 17 });
-      const minute = faker.number.int({ min: 0, max: 59 });
-      const time = hour.toString().padStart(2, '0') + ':' + minute.toString().padStart(2, '0');
-      const status = faker.helpers.arrayElement(statusOptions);
+      
+      let appointmentDate = faker.date.between({ from: new Date('2026-06-06'), to: new Date('2026-12-12') });
+      appointmentDate.setHours(0, 0, 0, 0);
+      while (appointmentDate.getDay() === 0 || appointmentDate.getDay() === 6) {
+        appointmentDate = faker.date.between({ from: new Date('2026-06-06'), to: new Date('2026-12-12') });
+        appointmentDate.setHours(0, 0, 0, 0);
+      }
+
+      const time = faker.helpers.arrayElement(doctor.availableSlots || ['08:00']);
+      
       const notes = faker.lorem.sentence();
       appointmentsData.push({
         patientId: patient._id,
         doctorId: doctor._id,
         appointmentDate,
         time,
-        status,
+        status: "Scheduled",
         notes
       });
     }
@@ -131,20 +152,31 @@ mongoose.set('strictQuery', true);
     console.log(`Au fost create ${createdAppointments.length} programări.`);
 
     const documentsData = [];
+    const documentTypes = ['Analiză sânge', 'Radiografie', 'Ecografie', 'RMN', 'CT', 'Electrocardiogramă', 'Test COVID'];
+    const testFilePath = path.resolve(__dirname, '../test_document.webp');
+    const testFileBuffer = fs.readFileSync(testFilePath);
+    console.log(`Fișier test (${testFileBuffer.length} bytes) citit din: ${testFilePath}`);
+
     for (const patient of createdPatients) {
-      const documentType = faker.lorem.word();
-      const fileName = faker.system.fileName();
-      const documentPath = `/uploads/documents/${fileName}`;
+      const documentType = faker.helpers.arrayElement(documentTypes);
+      const originalName = `${documentType.replace(/\s+/g, '_')}_${faker.string.alphanumeric(6)}.webp`;
+
+      // Upload efectiv pe S3
+      const documentPath = await uploadToS3(testFileBuffer, 'image/webp', originalName);
+      console.log(`  → Încărcat pe S3: ${documentPath}`);
+
       const uploadedAt = faker.date.past();
       documentsData.push({
         patientId: patient._id,
         documentType,
         documentPath,
+        originalName,
+        storageType: 's3',
         uploadedAt
       });
     }
     const createdDocuments = await DocumentModel.insertMany(documentsData);
-    console.log(`Au fost create ${createdDocuments.length} documente medicale (Document).`);
+    console.log(`Au fost create ${createdDocuments.length} documente medicale cu fișiere reale pe S3.`);
 
     const medicalRecordsData = [];
     for (const patient of createdPatients) {

@@ -6,6 +6,7 @@ import User from '../models/user.model';
 import { sendRegistrationConfirmationEmail, sendPasswordResetEmail } from '../services/mail.service';
 import { ResourceConflictError, ResourceNotFoundError, ResourceInvalidError } from '../common/errors/errors';
 import validationMessages from '../common/errors/validation.messages';
+import { logActivity } from '../services/activity.log.service';
 
 export const registerUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -79,6 +80,10 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
     }
 
     const token = jwt.sign({ ...user }, jwtSecret, { expiresIn: '24h' });
+
+    // Log login activity
+    req.user = user as any;
+    logActivity(req, 'LOGIN', 'User', user._id.toString(), `Autentificare: ${user.email}`);
 
     res.status(200).send({
       message: 'Autentificare cu succes',

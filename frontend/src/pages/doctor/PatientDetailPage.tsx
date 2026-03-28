@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { PatientData, MedicalRecord, DocumentData } from '../../types';
 
@@ -20,13 +20,26 @@ const PatientDetailPage: React.FC = () => {
       try {
         const res1 = await api.get(`/patient/medical-data/${patientId}`);
         setPatient(res1.data.patient || res1.data);
+      } catch (err: any) {
+        console.error('Patient data error:', err);
+        setError("Eroare la încărcarea datelor pacientului. Verificați CNP-ul și drepturile de acces.");
+        return;
+      }
+
+      try {
         const res2 = await api.get(`/medicalRecord/patient/${patientId}`);
         setRecords(res2.data.medicalRecords || res2.data.records || []);
+      } catch (err: any) {
+        console.warn('Medical records not found or error:', err.response?.status);
+        setRecords([]);
+      }
+
+      try {
         const res3 = await api.get(`/document/patient/${patientId}`);
         setDocuments(res3.data.documents || res3.data || []);
       } catch (err: any) {
-        console.error(err);
-        setError("Eroare la încărcarea datelor pacientului. Verificați ID-ul și drepturile de acces.");
+        console.warn('Documents not found or error:', err.response?.status);
+        setDocuments([]);
       }
     };
     fetchAll();
@@ -136,13 +149,40 @@ const PatientDetailPage: React.FC = () => {
     }
   };
 
+  const handleDownload = async (docId: string, docName: string) => {
+    try {
+      const response = await api.get(`/document/${docId}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${docName.replace(/\s+/g, '_')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download error:', err);
+      setError("Eroare la descărcarea documentului.");
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white shadow-lg rounded-lg">
       <h3 className="text-2xl font-semibold mb-4">Detalii Pacient</h3>
       {error && <p className="text-red-500 mb-4">{error}</p>}
       {patient ? (
         <div className="space-y-4 mb-4">
-          <p><strong>Nume:</strong> {patient.firstName} {patient.lastName}</p>
+          <div className="flex justify-between items-start">
+            <p className="text-xl"><strong>Nume:</strong> {patient.firstName} {patient.lastName}</p>
+            {patient.userAccountId && (
+              <Link 
+                to={`/doctor/messages?userId=${patient.userAccountId}`}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold text-sm flex items-center shadow-sm transition"
+              >
+                ✉️ Trimite Mesaj
+              </Link>
+            )}
+          </div>
           <p><strong>Data nașterii:</strong> {new Date(patient.birthDate).toLocaleDateString()}</p>
           <p><strong>Sex:</strong> {patient.gender}</p>
           <p><strong>Alergii:</strong> {patient.allergies || "Nespecificat"}</p>
@@ -157,7 +197,7 @@ const PatientDetailPage: React.FC = () => {
         <ul className="list-disc pl-6">
           {records.map(rec => (
             <li key={rec._id}>
-              {new Date(rec.recordDate).toLocaleDateString()}: <strong>{rec.diagnosis}</strong> – {rec.observations} {rec.recommendedTreatment && (<em>(Tratament: {rec.recommendedTreatment})</em>)}
+              {new Date(rec.recordDate).toLocaleDateString()}: <strong>{rec.diagnosis}</strong> - {rec.observations} {rec.recommendedTreatment && (<em>(Tratament: {rec.recommendedTreatment})</em>)}
             </li>
           ))}
         </ul>
@@ -168,9 +208,14 @@ const PatientDetailPage: React.FC = () => {
         <ul className="list-disc pl-6">
           {documents.map(doc => (
             <li key={doc._id}>
-              {doc.documentType} – <em>{new Date(doc.uploadedAt).toLocaleDateString()}</em> 
+              {doc.documentType} - <em>{new Date(doc.uploadedAt).toLocaleDateString()}</em> 
               {doc.documentPath && (
-                <a href={`http://localhost:5000/${doc.documentPath}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline"> [Deschide]</a>
+                <button 
+                  onClick={() => handleDownload(doc._id, doc.documentType)}
+                  className="text-blue-600 hover:underline ml-2"
+                >
+                  [Descarcă]
+                </button>
               )}
             </li>
           ))}
@@ -233,7 +278,7 @@ const PatientDetailPage: React.FC = () => {
               <option value="">--Selectează consultație--</option>
               {records.map(rec => (
                 <option key={rec._id} value={rec._id}>
-                  {new Date(rec.recordDate).toLocaleDateString()} – {rec.diagnosis}
+                  {new Date(rec.recordDate).toLocaleDateString()} - {rec.diagnosis}
                 </option>
               ))}
             </select>

@@ -1,21 +1,10 @@
 import multer from 'multer';
 import path from 'path';
 
-const uploadDirectory = '../frontend/uploads/';
-
-const storage = multer.diskStorage({
-  destination: (req: any, file: any, cb: any) => {
-    cb(null, uploadDirectory);
-  },
-  filename: (req: any, file: any, cb: any) => {
-    const fileExtension = path.extname(file.originalname);
-    const fileName = `${Date.now()}-${Math.round(Math.random() * 1E9)}${fileExtension}`;
-    cb(null, fileName);
-  }
-});
+const storage = multer.memoryStorage();
 
 const fileFilter = (req: any, file: any, cb: any) => {
-  const allowedTypes = /jpeg|jpg|png|gif|pdf/;
+  const allowedTypes = /jpeg|jpg|png|gif|pdf|webp/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
 

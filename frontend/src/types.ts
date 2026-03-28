@@ -6,13 +6,15 @@ export interface PatientData {
   gender: string;
   medicalHistory: string;
   allergies: string;
+  userAccountId?: string;
 }
 
 export interface DoctorData {
   _id: string;
-  firstName: string;
-  lastName: string;
-  specialization: string;
+  firstName?: string;
+  lastName?: string;
+  specialization?: string;
+  userAccountId?: string;
 }
 
 export interface MedicalRecord {
@@ -37,6 +39,7 @@ export interface DocumentData {
   _id: string;
   documentType: string;
   documentPath: string;
+  originalName: string;
   uploadedAt: string;
 }
 
@@ -44,12 +47,14 @@ export interface AppointmentPacient {
   _id: string;
   firstName: string;
   lastName: string;
+  userAccountId?: string;
 }
 
 export interface AppointmentDoctor {
   _id: string;
   firstName: string;
   lastName: string;
+  userAccountId?: string;
 }
 
 export interface Appointment {

@@ -6,6 +6,7 @@ export interface IDoctor extends Document {
   specialization: string;
   phone: string;
   isVerified: boolean;
+  availableSlots: string[];
   userAccountId: mongoose.Types.ObjectId;
 }
 
@@ -15,6 +16,7 @@ const DoctorSchema = new Schema<IDoctor>({
   specialization: { type: String, required: true },
   phone: { type: String, required: true },
   isVerified: { type: Boolean, required: true, default: false },
+  availableSlots: { type: [String], default: [] },
   userAccountId: { type: Schema.Types.ObjectId, ref: 'User', unique: true, required: true },
 }, { timestamps: false });
 

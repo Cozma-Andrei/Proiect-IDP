@@ -10,7 +10,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
   try {
     const appointmentSchema = Joi.object({
       doctorId: Joi.string().required().messages(validationMessages),
-      appointmentDate: Joi.date().min('now').required().messages(validationMessages),
+      appointmentDate: Joi.date().required().messages(validationMessages),
       time: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required().messages(validationMessages),
       notes: Joi.string().allow('').required().messages(validationMessages),
     }).unknown(true);
@@ -30,9 +30,12 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       throw new ResourceNotFoundError('Doctorul nu a fost găsit sau nu este verificat');
     }
 
+    const isoDateString = new Date(appointmentDate).toISOString().split('T')[0];
+    const queryDate = new Date(`${isoDateString}T00:00:00`);
+
     const existingAppointment = await Appointment.findOne({
       doctorId,
-      appointmentDate: new Date(appointmentDate),
+      appointmentDate: queryDate,
       time
     });
 
@@ -40,10 +43,19 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       throw new ResourceConflictError('Intervalul orar solicitat pentru programare este deja rezervat');
     }
 
+    const day = new Date(appointmentDate).getDay();
+    if (day === 0 || day === 6) {
+      throw new ResourceInvalidError('Programările pot fi făcute doar de luni până vineri');
+    }
+
+    if (!doctor.availableSlots || !doctor.availableSlots.includes(time)) {
+      throw new ResourceInvalidError('Medicul nu este disponibil în acest interval orar');
+    }
+
     const appointment = new Appointment({
       patientId: patient._id,
       doctorId,
-      appointmentDate: new Date(appointmentDate),
+      appointmentDate: queryDate,
       time,
       status: 'Scheduled',
       notes
@@ -69,7 +81,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
 export const createAppointmentForPatient = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const appointmentSchema = Joi.object({
-      appointmentDate: Joi.date().min('now').required().messages(validationMessages),
+      appointmentDate: Joi.date().required().messages(validationMessages),
       time: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required().messages(validationMessages),
       notes: Joi.string().allow('').required().messages(validationMessages),
     }).unknown(true);
@@ -95,9 +107,11 @@ export const createAppointmentForPatient = async (req: Request, res: Response, n
       const fn = p.firstName?.toLowerCase() || '';
       const ln = p.lastName?.toLowerCase() || '';
       const phone = p.phone || '';
+      const nationalId = p.nationalId || '';
       const idLower = identifier.toLowerCase();
 
       return (
+        nationalId === identifier ||
         fn.includes(idLower) ||
         ln.includes(idLower) ||
         phone.includes(identifier) ||
@@ -111,10 +125,13 @@ export const createAppointmentForPatient = async (req: Request, res: Response, n
       throw new ResourceNotFoundError('Pacientul nu a fost găsit');
     }
 
+    const isoDateString = new Date(appointmentDate).toISOString().split('T')[0];
+    const queryDate = new Date(`${isoDateString}T00:00:00`);
+
     const existingAppointment = await Appointment.findOne({
       doctorId: doctor._id,
       patientId: patient._id,
-      appointmentDate: new Date(appointmentDate),
+      appointmentDate: queryDate,
       time
     });
 
@@ -125,7 +142,7 @@ export const createAppointmentForPatient = async (req: Request, res: Response, n
     const appointment = new Appointment({
       patientId: patient._id,
       doctorId: doctor._id,
-      appointmentDate: new Date(appointmentDate),
+      appointmentDate: queryDate,
       time,
       status: 'Scheduled',
       notes
@@ -156,7 +173,7 @@ export const getPatientAppointments = async (req: Request, res: Response, next: 
     }
 
     const appointments = await Appointment.find({ patientId: patient._id })
-      .populate('doctorId', 'firstName lastName specialization')
+      .populate('doctorId', 'firstName lastName specialization userAccountId')
       .sort({ appointmentDate: 1, time: 1 });
 
     res.status(200).send({ appointments });
@@ -173,7 +190,7 @@ export const getDoctorAppointments = async (req: Request, res: Response, next: N
     }
 
     const appointments = await Appointment.find({ doctorId: doctor._id })
-      .populate('patientId', 'firstName lastName')
+      .populate('patientId', 'firstName lastName userAccountId')
       .sort({ appointmentDate: 1, time: 1 });
 
     res.status(200).send({ appointments });
@@ -187,7 +204,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
     const appointmentId = req.params.appointmentId;
     
     const statusSchema = Joi.object({
-      status: Joi.string().valid('Scheduled', 'Completed', 'Cancelled', 'Missed').required().messages(validationMessages),
+      status: Joi.string().valid('Scheduled', 'Completed').required().messages(validationMessages),
     }).unknown(true);
 
     const { error } = statusSchema.validate(req.body);
@@ -209,7 +226,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
     await appointment.save();
 
     res.status(200).send({ 
-      message: `Appointment ${status.toLowerCase()} successfully`,
+      message: `Programarea a fost marcată ca ${status.toLowerCase()} cu succes`,
       appointment: {
         id: appointment._id,
         date: appointment.appointmentDate,
@@ -231,9 +248,30 @@ export const cancelAppointment = async (req: Request, res: Response, next: NextF
       throw new ResourceNotFoundError('Programarea nu a fost găsită');
     }
 
-    const patient = await Patient.findOne({ userAccountId: req.user?._id });
-    if (!patient || !patient._id.equals(appointment.patientId)) {
+    const userRole = req.user?.role;
+    const userId = req.user?._id;
+
+    let hasPermission = false;
+    if (userRole === 'Admin') {
+      hasPermission = true;
+    } else if (userRole === 'Patient') {
+      const patient = await Patient.findOne({ userAccountId: userId });
+      if (patient && patient._id.equals(appointment.patientId)) {
+        hasPermission = true;
+      }
+    } else if (userRole === 'Doctor') {
+      const doctor = await Doctor.findOne({ userAccountId: userId });
+      if (doctor && doctor._id.equals(appointment.doctorId)) {
+        hasPermission = true;
+      }
+    }
+
+    if (!hasPermission) {
       throw new ResourceNotFoundError('Nu aveți permisiunea de a anula această programare');
+    }
+
+    if (appointment.status === 'Completed') {
+      throw new ResourceInvalidError('Nu se poate anula o programare finalizată');
     }
 
     const currentDate = new Date();
@@ -241,17 +279,10 @@ export const cancelAppointment = async (req: Request, res: Response, next: NextF
       throw new ResourceInvalidError('Nu se pot anula programările din trecut');
     }
 
-    appointment.status = 'Cancelled';
-    await appointment.save();
+    await Appointment.findByIdAndDelete(appointmentId);
 
     res.status(200).send({ 
-      message: 'Programarea a fost anulată cu succes',
-      appointment: {
-        id: appointment._id,
-        date: appointment.appointmentDate,
-        time: appointment.time,
-        status: appointment.status
-      }
+      message: 'Programarea a fost anulată și ștearsă cu succes'
     });
   } catch (error) {
     next(error);
@@ -271,23 +302,23 @@ export const getAvailableSlots = async (req: Request, res: Response, next: NextF
       throw new ResourceNotFoundError('Doctorul nu a fost găsit sau nu este verificat');
     }
 
+    const isoDateString = new Date(date as string).toISOString().split('T')[0];
+    const queryDate = new Date(`${isoDateString}T00:00:00`);
+
     const bookedAppointments = await Appointment.find({
       doctorId,
-      appointmentDate: new Date(date as string),
-      status: { $ne: 'Cancelled' }
+      appointmentDate: queryDate,
+      status: 'Scheduled'
     }).select('time');
 
-    const availableSlots = [];
     const bookedTimes = bookedAppointments.map(app => app.time);
     
-    for (let hour = 9; hour < 17; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        if (!bookedTimes.includes(timeSlot)) {
-          availableSlots.push(timeSlot);
-        }
-      }
+    const day = new Date(date as string).getDay();
+    if (day === 0 || day === 6) {
+      return res.status(200).send({ availableSlots: [], message: 'În weekend nu se fac programări' });
     }
+
+    const availableSlots = (doctor.availableSlots || []).filter(slot => !bookedTimes.includes(slot));
 
     res.status(200).send({ availableSlots });
   } catch (error) {

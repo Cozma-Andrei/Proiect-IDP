@@ -5,17 +5,17 @@ import api from "../../services/api";
 const AddDoctorAppointmentPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const [patientId,  setPatientId]  = useState("");
-  const [date,       setDate]       = useState("");
-  const [time,       setTime]       = useState("");
-  const [reason,     setReason]     = useState("");
+  const [patientId, setPatientId] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [reason, setReason] = useState("");
 
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!patientId) { setError("Selectați un pacient !"); return; }
+    if (!patientId) { setError("Introduceți CNP-ul pacientului!"); return; }
 
     setError(null);
     setLoading(true);
@@ -29,10 +29,17 @@ const AddDoctorAppointmentPage: React.FC = () => {
       if (err.response?.data?.message) {
         setError(err.response.data.message);
       } else if (err.response?.data && typeof err.response.data === 'object') {
+        const fieldTranslations: Record<string, string> = {
+          patientId: "CNP Pacient",
+          appointmentDate: "Data",
+          time: "Ora",
+          notes: "Motiv"
+        };
         const errorMessages = Object.entries(err.response.data)
           .map(([field, messages]: [string, any]) => {
+            const label = fieldTranslations[field] || field;
             const msgs = Array.isArray(messages) ? messages.join(', ') : messages;
-            return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgs}`;
+            return `${label}: ${msgs}`;
           })
           .join(' | ');
         setError(errorMessages || "Crearea programării a eșuat.");
@@ -50,13 +57,13 @@ const AddDoctorAppointmentPage: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
-            <label className="block mb-1 text-sm font-medium">Pacient</label>
+            <label className="block mb-1 text-sm font-medium">CNP Pacient</label>
             <input
               type="text"
               onChange={(e) => {
                 setPatientId(e.target.value);
               }}
-              placeholder="Nume / telefon"
+              placeholder="Introduceți CNP (13 cifre)"
               className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />

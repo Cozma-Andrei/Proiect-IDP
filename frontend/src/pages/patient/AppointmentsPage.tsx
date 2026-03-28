@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import { Appointment, DoctorData } from '../../types';
 
@@ -6,6 +7,8 @@ const PatientAppointmentsPage: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<DoctorData[]>([]);
   const [form, setForm] = useState({ doctorId: "", date: "", time: "", notes: "" });
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -32,9 +35,41 @@ const PatientAppointmentsPage: React.FC = () => {
     fetchDoctors();
   }, []);
 
+  useEffect(() => {
+    const fetchSlots = async () => {
+      if (!form.doctorId || !form.date) {
+        setAvailableSlots([]);
+        return;
+      }
+      setLoadingSlots(true);
+      setError(null);
+      try {
+        const res = await api.get(`/appointment/available-slots`, {
+          params: { doctorId: form.doctorId, date: form.date }
+        });
+        setAvailableSlots(res.data.availableSlots || []);
+        if (res.data.message) {
+          setError(res.data.message);
+        }
+      } catch (err) {
+        console.error("Eroare la încărcarea intervalelor libere:", err);
+        setAvailableSlots([]);
+      } finally {
+        setLoadingSlots(false);
+      }
+    };
+    fetchSlots();
+  }, [form.doctorId, form.date]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm(prev => {
+      const newForm = { ...prev, [name]: value };
+      if (name === 'doctorId' || name === 'date') {
+        newForm.time = "";
+      }
+      return newForm;
+    });
   };
 
   const bookAppointment = async (e: React.FormEvent) => {
@@ -57,10 +92,17 @@ const PatientAppointmentsPage: React.FC = () => {
       if (err.response?.data?.message) {
         setError(err.response.data.message);
       } else if (err.response?.data && typeof err.response.data === 'object') {
+        const fieldTranslations: Record<string, string> = {
+          doctorId: "Medicul",
+          appointmentDate: "Data programării",
+          time: "Ora",
+          notes: "Note"
+        };
         const errorMessages = Object.entries(err.response.data)
           .map(([field, messages]: [string, any]) => {
+            const label = fieldTranslations[field] || field;
             const msgs = Array.isArray(messages) ? messages.join(', ') : messages;
-            return `${field.charAt(0).toUpperCase() + field.slice(1)}: ${msgs}`;
+            return `${label}: ${msgs}`;
           })
           .join(' | ');
         setError(errorMessages || "Eroare la crearea programării. Verificați datele introduse.");
@@ -72,7 +114,7 @@ const PatientAppointmentsPage: React.FC = () => {
 
   const cancelAppointment = async (apptId: string) => {
     try {
-      await api.put(`/appointment/${apptId}/cancel`);
+      await api.delete(`/appointment/${apptId}`);
       setAppointments(prev => prev.filter(appt => appt._id !== apptId));
     } catch (err) {
       console.error(err);
@@ -85,8 +127,13 @@ const PatientAppointmentsPage: React.FC = () => {
   const past = appointments.filter(a => new Date(a.appointmentDate) < now);
 
   const getDoctorName = (id: string) => {
-    const doctor = doctors.find(doc => doc._id === id);
-    return doctor ? `Dr. ${doctor.firstName} ${doctor.lastName}` : `Dr. ${id}`;
+    const d = doctors.find(doc => doc._id === id);
+    return d ? `Dr. ${d.firstName} ${d.lastName}` : 'Medic Necunoscut';
+  };
+
+  const getDoctorSpecialization = (id: string) => {
+    const d = doctors.find(doc => doc._id === id);
+    return d ? d.specialization : '';
   };
 
   return (
@@ -108,15 +155,34 @@ const PatientAppointmentsPage: React.FC = () => {
                 className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-100 rounded-md border"
               >
                 <div>
-                  <p className="font-medium text-gray-800">{new Date(appt.appointmentDate).toLocaleString()}</p>
-                  <p className="text-sm text-gray-600">{getDoctorName(appt.doctorId._id)} - Status: {appt.status}</p>
+                  <p className="font-medium text-gray-800">
+                    {new Date(appt.appointmentDate).toLocaleDateString('ro-RO')} la {appt.time}
+                    {appt.status === 'Completed' && (
+                      <span className="ml-2 px-2 py-0.5 bg-green-200 text-green-800 text-xs font-bold rounded-full uppercase">Finalizat</span>
+                    )}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {getDoctorName(appt.doctorId._id)} - <span className="text-blue-600 font-medium">{getDoctorSpecialization(appt.doctorId._id)}</span>
+                  </p>
                 </div>
-                <button
-                  onClick={() => cancelAppointment(appt._id)}
-                  className="mt-2 sm:mt-0 px-3 py-1 text-sm bg-red-100 text-red-600 rounded hover:bg-red-200"
-                >
-                  Anulează
-                </button>
+                <div className="flex gap-2 mt-2 sm:mt-0">
+                  {appt.doctorId?.userAccountId && (
+                    <Link
+                      to={`/patient/messages?userId=${appt.doctorId.userAccountId}`}
+                      className="px-3 py-1 flex items-center text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition"
+                    >
+                      ✉️ Mesaj
+                    </Link>
+                  )}
+                  {appt.status !== 'Completed' && (
+                    <button
+                      onClick={() => cancelAppointment(appt._id)}
+                      className="px-3 py-1 text-sm bg-red-100 text-red-600 rounded hover:bg-red-200 transition"
+                    >
+                      Anulează
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
@@ -134,7 +200,7 @@ const PatientAppointmentsPage: React.FC = () => {
                 key={appt._id}
                 className="p-3 bg-gray-50 rounded-md border text-sm text-gray-700"
               >
-                {new Date(appt.appointmentDate).toLocaleString()} - {getDoctorName(appt.doctorId._id)} - Status: {appt.status}
+                {new Date(appt.appointmentDate).toLocaleDateString('ro-RO')} la {appt.time} - {getDoctorName(appt.doctorId._id)} ({getDoctorSpecialization(appt.doctorId._id)})
               </li>
             ))}
           </ul>
@@ -167,6 +233,7 @@ const PatientAppointmentsPage: React.FC = () => {
               type="date"
               name="date"
               value={form.date}
+              min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
               onChange={handleInputChange}
               required
               className="w-full border rounded px-3 py-2"
@@ -174,14 +241,21 @@ const PatientAppointmentsPage: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Ora:</label>
-            <input
-              type="time"
+            <select
               name="time"
               value={form.time}
               onChange={handleInputChange}
               required
-              className="w-full border rounded px-3 py-2"
-            />
+              disabled={!form.doctorId || !form.date || loadingSlots || availableSlots.length === 0}
+              className="w-full border rounded px-3 py-2 disabled:bg-gray-100"
+            >
+              <option value="">
+                {loadingSlots ? "Se încarcă..." : availableSlots.length > 0 ? "--Selectează ora--" : "Nu sunt intervale disponibile"}
+              </option>
+              {availableSlots.map(slot => (
+                <option key={slot} value={slot}>{slot}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Note:</label>

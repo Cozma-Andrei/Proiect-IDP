@@ -29,12 +29,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let docExists = false;
     let patExists = false;
     try {
-      await api.get('/doctor/profile');
-      docExists = true;
+      const resDoc = await api.get('/doctor/profile');
+      docExists = !!resDoc.data.doctor;
     } catch {}
     try {
-      await api.get('/patient/profile');
-      patExists = true;
+      const resPat = await api.get('/patient/profile');
+      patExists = !!resPat.data.patient;
     } catch {}
     setHasDoctorProfile(docExists);
     setHasPatientProfile(patExists);

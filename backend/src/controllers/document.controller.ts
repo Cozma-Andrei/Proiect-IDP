@@ -1,11 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import Joi from 'joi';
 import fs from 'fs';
+import { Readable } from 'stream';
 import Document from '../models/document.model';
 import Patient from '../models/patient.model';
 import Doctor from '../models/doctor.model';
 import { ResourceNotFoundError, ResourceInvalidError } from '../common/errors/errors';
 import validationMessages from '../common/errors/validation.messages';
+import { uploadToS3, deleteFromS3, getS3ObjectStream } from '../services/aws.s3.service';
+import { logActivity } from '../services/activity.log.service';
 
 export const uploadDocument = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -21,7 +24,8 @@ export const uploadDocument = async (req: Request, res: Response, next: NextFunc
     if (error) throw error;
 
     const { documentType } = req.body;
-    const documentPath = req.file.path;
+    
+    const documentPath = await uploadToS3(req.file.buffer, req.file.mimetype, req.file.originalname);
 
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     if (!patient) {
@@ -32,10 +36,14 @@ export const uploadDocument = async (req: Request, res: Response, next: NextFunc
       patientId: patient._id,
       documentType,
       documentPath,
+      originalName: req.file.originalname,
+      storageType: 's3',
       uploadedAt: new Date(),
     });
 
     await document.save();
+
+    logActivity(req, 'UPLOAD_DOCUMENT', 'Document', document._id.toString(), `Încărcat: ${documentType} (${req.file.originalname})`);
 
     res.status(201).send({ 
       message: 'Documentul a fost încărcat cu succes',
@@ -46,12 +54,6 @@ export const uploadDocument = async (req: Request, res: Response, next: NextFunc
       }
     });
   } catch (error) {
-    // If there was an error and a file was uploaded, remove it
-    if (req.file && req.file.path) {
-      fs.unlink(req.file.path, (err) => {
-        if (err) console.error('Error deleting file:', err);
-      });
-    }
     next(error);
   }
 };
@@ -81,28 +83,12 @@ export const getPatientDocumentsByDoctorView = async (req: Request, res: Respons
       throw new ResourceNotFoundError('Profilul de medic nu a fost găsit sau nu este verificat');
     }
 
-    let patients: any[] = [];
-
-    if (req.user?.role === 'Admin' || req.user?.role === 'Doctor') {
-      patients = await Patient.find({});
+    let patient = await Patient.findOne({ nationalId: patientId });
+    if (!patient) {
+      try {
+        patient = await Patient.findById(patientId);
+      } catch (e) {}
     }
-
-    const identifier = patientId;
-    const patient = patients.find(p => {
-      const fn = p.firstName?.toLowerCase() || '';
-      const ln = p.lastName?.toLowerCase() || '';
-      const phone = p.phone || '';
-      const idLower = identifier.toLowerCase();
-
-      return (
-        fn.includes(idLower) ||
-        ln.includes(idLower) ||
-        phone.includes(identifier) ||
-        idLower.includes(fn) ||
-        idLower.includes(ln) ||
-        identifier.includes(phone)
-      );
-    });
 
     if (!patient) {
       throw new ResourceNotFoundError('Pacientul nu a fost găsit');
@@ -123,8 +109,11 @@ export const getDocumentById = async (req: Request, res: Response, next: NextFun
     
     const document = await Document.findById(documentId);
     if (!document) {
+      console.error(`[getDocumentById] Document not found in DB: ${documentId}`);
       throw new ResourceNotFoundError('Documentul nu a fost găsit');
     }
+
+    console.log(`[getDocumentById] Document found: ${documentId}, storageType: ${document.storageType}, path: ${document.documentPath}`);
 
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     const doctor = await Doctor.findOne({ userAccountId: req.user?._id });
@@ -132,16 +121,42 @@ export const getDocumentById = async (req: Request, res: Response, next: NextFun
     const isPatient = patient && patient._id.equals(document.patientId);
     const isDoctor = doctor && doctor.isVerified;
     
+    console.log(`[getDocumentById] patient: ${patient?._id}, isPatient(owner): ${isPatient}, isDoctor: ${isDoctor}, role: ${req.user?.role}`);
+
     if (!isPatient && !isDoctor && req.user?.role !== 'Admin') {
       throw new ResourceNotFoundError('Nu aveți permisiunea de a accesa acest document');
     }
 
     const filePath = document.documentPath;
-    if (!fs.existsSync(filePath)) {
-      throw new ResourceNotFoundError('Fișierul documentului nu a fost găsit');
+
+    // Determine storage type from model field
+    if (document.storageType === 'local') {
+      if (!fs.existsSync(filePath)) {
+        throw new ResourceNotFoundError('Fișierul documentului nu a fost găsit local');
+      }
+      return res.download(filePath);
     }
 
-    res.download(filePath);
+    try {
+      const s3Response = await getS3ObjectStream(filePath);
+      
+      if (s3Response.ContentType) {
+        res.setHeader('Content-Type', s3Response.ContentType);
+      }
+      if (s3Response.ContentLength) {
+        res.setHeader('Content-Length', s3Response.ContentLength);
+      }
+
+      const fileName = document.originalName || filePath.split('/').pop() || 'document.pdf';
+      const safeFileName = fileName.replace(/[^\x20-\x7E]/g, '_');
+      res.setHeader('Content-Disposition', `inline; filename="${safeFileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+      
+      const stream = s3Response.Body as Readable;
+      stream.pipe(res);
+    } catch (err: any) {
+      console.error('Eroare S3 download:', err);
+      throw new ResourceNotFoundError('Fișierul documentului nu a fost găsit în Amazon S3');
+    }
   } catch (error) {
     next(error);
   }
@@ -162,8 +177,17 @@ export const deleteDocument = async (req: Request, res: Response, next: NextFunc
     }
 
     const filePath = document.documentPath;
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    
+    if (document.storageType === 'local') {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } else {
+      try {
+        await deleteFromS3(filePath);
+      } catch (err) {
+        console.error('S3 Delete Error', err);
+      }
     }
 
     await Document.findByIdAndDelete(documentId);

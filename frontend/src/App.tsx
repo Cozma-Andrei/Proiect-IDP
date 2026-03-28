@@ -16,12 +16,16 @@ import DoctorAppointmentsPage from './pages/doctor/AppointmentsPage';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminDoctorsPage from './pages/admin/AdminDoctorsPage';
+import AdminActivityLogsPage from './pages/admin/AdminActivityLogsPage';
+import AdminReportsPage from './pages/admin/AdminReportsPage';
 import ConfirmRegistrationPage from './pages/ConfirmRegistrationPage';
 import RequestPasswordResetPage from './pages/RequestPasswordResetPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ChooseProfilePage from './pages/ChooseProfilePage';
 import CreatePatientPage from './pages/CreatePatientPage';
 import CreateDoctorPage from './pages/CreateDoctorPage';
+import MessagesPage from './pages/shared/MessagesPage';
 import Navbar from './components/Navbar';
 import PatientHomePage from './pages/PatientHomePage';
 import DoctorHomePage from './pages/DoctorHomePage';
@@ -63,6 +67,7 @@ const App: React.FC = () => {
           <Route path="allergies" element={<AllergiesPage />} />
           <Route path="meal-plan" element={<MealPlanPage />} />
           <Route path="appointments" element={<PatientAppointmentsPage />} />
+          <Route path="messages" element={<MessagesPage />} />
         </Route>
 
         <Route
@@ -77,6 +82,7 @@ const App: React.FC = () => {
           <Route path="profile/edit" element={<DoctorProfileEditPage />} />
           <Route path="patient" element={<PatientSearchPage />} />
           <Route path="patient/:patientId" element={<PatientDetailPage />} />
+          <Route path="messages" element={<MessagesPage />} />
         </Route>
 
         <Route
@@ -88,6 +94,9 @@ const App: React.FC = () => {
           <Route index element={<Navigate to="dashboard" />} />
           <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="users" element={<AdminUsersPage />} />
+          <Route path="doctors" element={<AdminDoctorsPage />} />
+          <Route path="activity-logs" element={<AdminActivityLogsPage />} />
+          <Route path="reports" element={<AdminReportsPage />} />
         </Route>
 
         <Route path="*" element={

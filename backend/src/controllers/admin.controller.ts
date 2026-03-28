@@ -5,6 +5,7 @@ import Doctor from '../models/doctor.model';
 import Patient from '../models/patient.model';
 import { ResourceNotFoundError } from '../common/errors/errors';
 import validationMessages from '../common/errors/validation.messages';
+import { logActivity } from '../services/activity.log.service';
 
 export const verifyDoctor = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -32,6 +33,8 @@ export const verifyDoctor = async (req: Request, res: Response, next: NextFuncti
         isVerified: doctor.isVerified
       }
     });
+
+    logActivity(req, 'VERIFY_DOCTOR', 'Doctor', doctor._id.toString(), `Verificat: ${doctor.firstName} ${doctor.lastName}`);
   } catch (error) {
     next(error);
   }
@@ -141,6 +144,8 @@ export const updateUserRole = async (req: Request, res: Response, next: NextFunc
       message: `User role updated to ${role} successfully`,
       user
     });
+
+    logActivity(req, 'UPDATE_ROLE', 'User', userId, `Rol schimbat în: ${role}`);
   } catch (error) {
     next(error);
   }
@@ -159,11 +164,12 @@ export const deactivateUser = async (req: Request, res: Response, next: NextFunc
       throw new ResourceNotFoundError('Utilizatorul nu a fost găsit');
     }
 
-    // We don't want to actually delete users, but we can mark them as inactive
-    user.isConfirmed = false; // Using isConfirmed as a way to deactivate
+    user.isConfirmed = false;
     await user.save();
 
     res.status(200).send({ message: 'Utilizatorul a fost dezactivat cu succes' });
+
+    logActivity(req, 'DEACTIVATE_USER', 'User', userId, `Dezactivat: ${user.username}`);
   } catch (error) {
     next(error);
   }
@@ -175,17 +181,123 @@ export const getSystemStats = async (req: Request, res: Response, next: NextFunc
       throw new ResourceNotFoundError('Nu aveți permisiunea de a efectua această acțiune');
     }
 
-    const userCount = await User.countDocuments();
-    const doctorCount = await Doctor.countDocuments();
-    const verifiedDoctorCount = await Doctor.countDocuments({ isVerified: true });
-    const patientCount = await Patient.countDocuments();
-    
+    const Appointment = require('../models/appointment.model').default;
+    const DocumentModel = require('../models/document.model').default;
+    const MedicalRecord = require('../models/medical.record.model').default;
+    const Prescription = require('../models/prescription.model').default;
+    const ActivityLog = require('../models/activity.log.model').default;
+
+    const [userCount, doctorCount, verifiedDoctorCount, patientCount, appointmentCount, documentCount, recordCount, prescriptionCount, recentLogsCount] = await Promise.all([
+      User.countDocuments(),
+      Doctor.countDocuments(),
+      Doctor.countDocuments({ isVerified: true }),
+      Patient.countDocuments(),
+      Appointment.countDocuments(),
+      DocumentModel.countDocuments(),
+      MedicalRecord.countDocuments(),
+      Prescription.countDocuments(),
+      ActivityLog.countDocuments(),
+    ]);
+
+    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentLoginsCount = await ActivityLog.countDocuments({ action: 'LOGIN', timestamp: { $gte: last24h } });
+    const recentUploadsCount = await ActivityLog.countDocuments({ action: 'UPLOAD_DOCUMENT', timestamp: { $gte: last24h } });
+
     res.status(200).send({ 
       stats: {
         users: userCount,
         doctors: doctorCount,
         verifiedDoctors: verifiedDoctorCount,
-        patients: patientCount
+        patients: patientCount,
+        appointments: appointmentCount,
+        documents: documentCount,
+        medicalRecords: recordCount,
+        prescriptions: prescriptionCount,
+        activityLogs: recentLogsCount,
+        recentLogins24h: recentLoginsCount,
+        recentUploads24h: recentUploadsCount,
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getActivityLogs = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (req.user?.role !== 'Admin') {
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a efectua această acțiune');
+    }
+
+    const ActivityLog = require('../models/activity.log.model').default;
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const action = req.query.action as string;
+    const skip = (page - 1) * limit;
+
+    const filter: any = {};
+    if (action) filter.action = action;
+
+    const [logs, total] = await Promise.all([
+      ActivityLog.find(filter).sort({ timestamp: -1 }).skip(skip).limit(limit),
+      ActivityLog.countDocuments(filter),
+    ]);
+
+    res.status(200).send({
+      logs,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getReport = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (req.user?.role !== 'Admin') {
+      throw new ResourceNotFoundError('Nu aveți permisiunea de a efectua această acțiune');
+    }
+
+    const ActivityLog = require('../models/activity.log.model').default;
+    const Appointment = require('../models/appointment.model').default;
+
+    const actionBreakdown = await ActivityLog.aggregate([
+      { $group: { _id: '$action', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+
+    const last30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const dailyActivity = await ActivityLog.aggregate([
+      { $match: { timestamp: { $gte: last30d } } },
+      { $group: {
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
+        count: { $sum: 1 },
+      }},
+      { $sort: { _id: 1 } },
+    ]);
+
+    const topUsers = await ActivityLog.aggregate([
+      { $group: { _id: '$username', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+    ]);
+
+    const appointmentsByStatus = await Appointment.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]);
+
+    res.status(200).send({
+      report: {
+        actionBreakdown,
+        dailyActivity,
+        topUsers,
+        appointmentsByStatus,
       }
     });
   } catch (error) {

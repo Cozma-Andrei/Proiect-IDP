@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import { Appointment } from '../../types';
 
@@ -27,7 +28,17 @@ const DoctorAppointmentsPage: React.FC = () => {
       ));
     } catch (err) {
       console.error(err);
-      alert("Nu s-a putut actualiza statusul programării.");
+      alert("Nu s-a putut finaliza programarea.");
+    }
+  };
+
+  const deleteAppointment = async (apptId: string) => {
+    try {
+      await api.delete(`/appointment/${apptId}`);
+      setAppointments(prev => prev.filter(appt => appt._id !== apptId));
+    } catch (err) {
+      console.error(err);
+      alert("Nu s-a putut șterge programarea.");
     }
   };
 console.log(appointments)
@@ -46,29 +57,38 @@ console.log(appointments)
               className="p-4 bg-green-50 border-l-4 border-green-400 rounded shadow-sm"
             >
               <p className="font-semibold text-gray-800">
-                {new Date(appt.appointmentDate).toLocaleString()} - 
-                <span className="text-blue-700"> Pacient: {appt.patientId.firstName} {appt.patientId.lastName}</span> - 
-                <span className={appt.status === 'Completed' ? 'text-green-700' : 'text-yellow-600'}> Status: {appt.status}</span>
+                {new Date(appt.appointmentDate).toLocaleDateString('ro-RO')} la {appt.time} - 
+                <span className="text-blue-700"> Pacient: {appt.patientId.firstName} {appt.patientId.lastName}</span>
+                {appt.status === 'Completed' && (
+                  <span className="ml-3 px-2 py-1 bg-green-200 text-green-800 text-xs font-bold rounded-full uppercase">Finalizat</span>
+                )}
               </p>
 
               {appt.status !== 'Completed' && (
-                <>
+                <div className="flex gap-2 mt-2">
                   <button 
                     onClick={() => updateStatus(appt._id, 'Completed')} 
-                    className="mt-2 text-white bg-green-500 px-4 py-2 rounded-md hover:bg-green-600 focus:outline-none"
+                    className="text-white bg-green-500 px-4 py-2 rounded-md hover:bg-green-600 focus:outline-none text-sm font-medium"
                   >
                     Finalizează
                   </button>
                   
-                  {appt.status !== 'Cancelled' && (
-                    <button 
-                      onClick={() => updateStatus(appt._id, 'Cancelled')} 
-                      className="mt-2 ml-4 text-white bg-red-500 px-4 py-2 rounded-md hover:bg-red-600 focus:outline-none"
+                  <button 
+                    onClick={() => deleteAppointment(appt._id)} 
+                    className="text-white bg-red-500 px-4 py-2 rounded-md hover:bg-red-600 focus:outline-none text-sm font-medium"
+                  >
+                    Anulează
+                  </button>
+
+                  {appt.patientId?.userAccountId && (
+                    <Link
+                      to={`/doctor/messages?userId=${appt.patientId.userAccountId}`}
+                      className="px-4 py-2 flex items-center text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition font-medium"
                     >
-                      Anulează
-                    </button>
+                      ✉️ Mesaj
+                    </Link>
                   )}
-                </>
+                </div>
               )}
             </li>
           ))}

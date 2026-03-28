@@ -5,6 +5,7 @@ import Patient from '../models/patient.model';
 import Doctor from '../models/doctor.model';
 import { ResourceNotFoundError } from '../common/errors/errors';
 import validationMessages from '../common/errors/validation.messages';
+import { logActivity } from '../services/activity.log.service';
 
 export const createMedicalRecord = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -40,6 +41,8 @@ export const createMedicalRecord = async (req: Request, res: Response, next: Nex
     });
 
     await medicalRecord.save();
+
+    logActivity(req, 'CREATE_RECORD', 'MedicalRecord', medicalRecord._id.toString(), `Diagnostic: ${diagnosis}`);
 
     res.status(201).send({ 
       message: 'Înregistrarea medicală a fost creată cu succes',
@@ -80,28 +83,12 @@ export const getMedicalRecordsByPatientId = async (req: Request, res: Response, 
       throw new ResourceNotFoundError('Profilul de medic nu a fost găsit sau nu este verificat');
     }
 
-    let patients: any[] = [];
-
-    if (req.user?.role === 'Admin' || req.user?.role === 'Doctor') {
-      patients = await Patient.find({});
+    let patient = await Patient.findOne({ nationalId: patientId });
+    if (!patient) {
+      try {
+        patient = await Patient.findById(patientId);
+      } catch (e) {}
     }
-
-    const identifier = patientId;
-    const patient = patients.find(p => {
-      const fn = p.firstName?.toLowerCase() || '';
-      const ln = p.lastName?.toLowerCase() || '';
-      const phone = p.phone || '';
-      const idLower = identifier.toLowerCase();
-
-      return (
-        fn.includes(idLower) ||
-        ln.includes(idLower) ||
-        phone.includes(identifier) ||
-        idLower.includes(fn) ||
-        idLower.includes(ln) ||
-        identifier.includes(phone)
-      );
-    });
 
     if (!patient) {
       throw new ResourceNotFoundError('Pacientul nu a fost găsit');

@@ -6,6 +6,7 @@ import Doctor from '../models/doctor.model';
 import Patient from '../models/patient.model';
 import { ResourceNotFoundError } from '../common/errors/errors';
 import validationMessages from '../common/errors/validation.messages';
+import { logActivity } from '../services/activity.log.service';
 
 export const sendMessage = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -41,6 +42,8 @@ export const sendMessage = async (req: Request, res: Response, next: NextFunctio
         sentAt: message.sentAt,
       }
     });
+
+    logActivity(req, 'SEND_MESSAGE', 'Message', message._id.toString(), `Către: ${receiverId}`);
   } catch (error) {
     next(error);
   }
@@ -139,9 +142,39 @@ export const markMessageAsRead = async (req: Request, res: Response, next: NextF
       throw new ResourceNotFoundError('Nu aveți permisiunea de a marca acest mesaj ca fiind citit');
     }
 
+    // Set as read
+    message.isRead = true;
     await message.save();
 
     res.status(200).send({ message: 'Mesaj marcat ca citit' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getContactDetails = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const contactId = req.params.userId;
+    const user = await User.findById(contactId).select('username');
+    if (!user) {
+      throw new ResourceNotFoundError('Contactul nu a fost găsit');
+    }
+
+    let partnerDetails = null;
+    const isDoctor = await Doctor.findOne({ userAccountId: contactId }).select('firstName lastName specialization');
+    const isPatient = await Patient.findOne({ userAccountId: contactId }).select('firstName lastName');
+    
+    if (isDoctor) {
+      partnerDetails = { ...isDoctor.toObject(), role: 'Doctor' };
+    } else if (isPatient) {
+      partnerDetails = { ...isPatient.toObject(), role: 'Patient' };
+    }
+
+    res.status(200).send({
+      userId: contactId,
+      username: user.username,
+      details: partnerDetails
+    });
   } catch (error) {
     next(error);
   }

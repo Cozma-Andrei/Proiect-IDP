@@ -67,7 +67,7 @@ export const getPatientProfile = async (req: Request, res: Response, next: NextF
   try {
     const patient = await Patient.findOne({ userAccountId: req.user?._id });
     if (!patient) {
-      throw new ResourceNotFoundError('Profilul de pacient nu a fost găsit');
+      return res.status(200).send({ patient: null });
     }
 
     res.status(200).send({ patient });
@@ -114,36 +114,20 @@ export const viewMedicalData = async (req: Request, res: Response, next: NextFun
   try {
     const identifier = req.params.patientId || req.user?._id?.toString();
     const userId = req.user?._id?.toString();
+    const explicitSearch = !!req.params.patientId;
 
-    let patients: any[] = [];
-
-    if (req.user?.role === 'Admin' || req.user?.role === 'Doctor') {
-      patients = await Patient.find({});
-    } else {
-      patients = await Patient.find({ userAccountId: userId });
+    let patient = await Patient.findOne({ nationalId: identifier });
+    if (!patient) {
+      try {
+        patient = await Patient.findById(identifier);
+      } catch (e) {}
+    }
+    if (!patient && !explicitSearch) {
+      patient = await Patient.findOne({ userAccountId: userId });
     }
 
-    let patient = patients.find(p => {
-      const fn = p.firstName?.toLowerCase() || '';
-      const ln = p.lastName?.toLowerCase() || '';
-      const phone = p.phone || '';
-      const idLower = identifier.toLowerCase();
-
-      return (
-        fn.includes(idLower) ||
-        ln.includes(idLower) ||
-        phone.includes(identifier) ||
-        idLower.includes(fn) ||
-        idLower.includes(ln) ||
-        identifier.includes(phone)
-      );
-    });
-
     if (!patient) {
-      patient = await Patient.findOne({ userAccountId: userId });
-      if (!patient) {
-        throw new ResourceNotFoundError('Pacientul nu a fost găsit');
-      }
+      throw new ResourceNotFoundError('Pacientul nu a fost găsit');
     }
 
     const isOwner = patient.userAccountId?.toString() === userId;
@@ -161,7 +145,8 @@ export const viewMedicalData = async (req: Request, res: Response, next: NextFun
         birthDate: patient.birthDate,
         gender: patient.gender,
         medicalHistory: patient.medicalHistory,
-        allergies: patient.allergies
+        allergies: patient.allergies,
+        userAccountId: patient.userAccountId
       }
     });
   } catch (error) {

@@ -104,13 +104,7 @@ const HomePage: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-medium text-gray-900">
-                        {new Date(appt.appointmentDate).toLocaleDateString('ro-RO', { 
-                          weekday: 'short', 
-                          day: 'numeric', 
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {new Date(appt.appointmentDate).toLocaleDateString('ro-RO')} la {appt.time}
                       </p>
                       <p className="text-sm text-gray-500">{appt.notes || 'Consultație medicală'}</p>
                     </div>

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link, Outlet } from 'react-router-dom';
 
 const DoctorLayout: React.FC = () => {
@@ -10,8 +9,17 @@ const DoctorLayout: React.FC = () => {
             <Link to="/doctor/appointments" className="mr-4 hover:text-green-500">
               Programările Mele
             </Link>
+            <Link to="/doctor/appointments/new" className="mr-4 hover:text-green-500">
+              Adaugă Programare
+            </Link>
             <Link to="/doctor/patient" className="mr-4 hover:text-green-500">
               Caută Pacient
+            </Link>
+            <Link to="/doctor/messages" className="mr-4 hover:text-green-500">
+              Mesaje
+            </Link>
+            <Link to="/doctor/profile/edit" className="mr-4 hover:text-green-500">
+              Editare Profil
             </Link>
           </div>
         </div>

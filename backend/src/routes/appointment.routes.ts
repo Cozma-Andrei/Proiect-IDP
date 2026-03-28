@@ -9,7 +9,7 @@ appointmentRouter.post('/for-patient', authenticateUser, createAppointmentForPat
 appointmentRouter.get('/patient', authenticateUser, getPatientAppointments);
 appointmentRouter.get('/doctor', authenticateUser, getDoctorAppointments);
 appointmentRouter.put('/:appointmentId/status', authenticateUser, updateAppointmentStatus);
-appointmentRouter.put('/:appointmentId/cancel', authenticateUser, cancelAppointment);
+appointmentRouter.delete('/:appointmentId', authenticateUser, cancelAppointment);
 appointmentRouter.get('/available-slots', authenticateUser, getAvailableSlots);
 
 export default appointmentRouter;

@@ -13,6 +13,7 @@ const PatientLayout: React.FC = () => {
             <Link to="/patient/allergies" className="mr-4 hover:text-blue-500">Alergii</Link>
             <Link to="/patient/meal-plan" className="mr-4 hover:text-blue-500">Plan Alimentar</Link>
             <Link to="/patient/appointments" className="mr-4 hover:text-blue-500">Programări</Link>
+            <Link to="/patient/messages" className="mr-4 hover:text-blue-500">Mesaje</Link>
           </div>
         </div>
       </nav>
