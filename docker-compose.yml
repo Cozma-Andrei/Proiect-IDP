@@ -3,151 +3,239 @@ version: "3.8"
 services:
   # ─── Frontend ──────────────────────────────────────────
   frontend:
-    restart: unless-stopped
+    image: carelog-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     ports:
-      - 3000:3000
+      - target: 3000
+        published: 3000
+        protocol: tcp
+        mode: host
     command: npm run dev
     environment:
       - CHOKIDAR_USEPOLLING=true
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
     networks:
-      - frontend
+      carelog-net:
+        aliases:
+          - frontend
 
   # ─── Auth Service (port 5001) ──────────────────────────
   auth-service:
-    restart: unless-stopped
+    image: carelog-auth-service:latest
     build:
       context: ./auth-service
       dockerfile: Dockerfile
-    volumes:
-      - ./auth-service:/usr/local/apps/auth-service
-      - /usr/local/apps/auth-service/node_modules
     ports:
       - 5001:5001
-    command: npm run dev
-    depends_on:
-      - auth-db
+    entrypoint: ["/bin/sh", "/docker-entrypoint.sh", "npm", "run", "dev"]
     environment:
       - NODE_ENV=DEV
       - PORT=5001
       - MONGO_URI=mongodb://auth-db:27017/careLog_auth
       - FRONTEND_URL=http://localhost:3000
-      - MAIL_USER=${MAIL_USER}
-      - MAIL_PASS=${MAIL_PASS}
-      - JWT_SECRET=${JWT_SECRET}
       - RECORDS_SERVICE_URL=http://records-service:5003
+    volumes:
+      - /home/andrei-cozma/Desktop/Facultate/IDP/Proiect-IDP/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+    secrets:
+      - JWT_SECRET
+      - MAIL_USER
+      - MAIL_PASS
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
     networks:
-      - frontend
-      - backend
+      carelog-net:
+        aliases:
+          - auth-service
 
   # ─── Medical Service (port 5002) ───────────────────────
   medical-service:
-    restart: unless-stopped
+    image: carelog-medical-service:latest
     build:
       context: ./medical-service
       dockerfile: Dockerfile
-    volumes:
-      - ./medical-service:/usr/local/apps/medical-service
-      - /usr/local/apps/medical-service/node_modules
     ports:
       - 5002:5002
-    command: npm run dev
+    entrypoint: ["/bin/sh", "/docker-entrypoint.sh", "npm", "run", "dev"]
     environment:
       - NODE_ENV=DEV
       - PORT=5002
-      - JWT_SECRET=${JWT_SECRET}
       - RECORDS_SERVICE_URL=http://records-service:5003
       - IO_SERVICE_URL=http://io-service:5004
       - AUTH_SERVICE_URL=http://auth-service:5001
-    depends_on:
-      - records-service
-      - io-service
+    volumes:
+      - /home/andrei-cozma/Desktop/Facultate/IDP/Proiect-IDP/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+    secrets:
+      - JWT_SECRET
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
     networks:
-      - frontend
-      - backend
+      carelog-net:
+        aliases:
+          - medical-service
 
   # ─── Records Service (port 5003) ───────────────────────
   records-service:
-    restart: unless-stopped
+    image: carelog-records-service:latest
     build:
       context: ./records-service
       dockerfile: Dockerfile
-    volumes:
-      - ./records-service:/usr/local/apps/records-service
-      - /usr/local/apps/records-service/node_modules
     ports:
       - 5003:5003
-    command: npm run dev
-    depends_on:
-      - medical-db
+    entrypoint: ["/bin/sh", "/docker-entrypoint.sh", "npm", "run", "dev"]
     environment:
       - NODE_ENV=DEV
       - PORT=5003
       - MONGO_URI=mongodb://medical-db:27017/careLog_medical
       - AUTH_MONGO_URI=mongodb://auth-db:27017/careLog_auth
       - IO_SERVICE_URL=http://io-service:5004
+    volumes:
+      - /home/andrei-cozma/Desktop/Facultate/IDP/Proiect-IDP/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
     networks:
-      - backend
-      - data
+      carelog-net:
+        aliases:
+          - records-service
 
   # ─── IO Service (port 5004) ────────────────────────────
   io-service:
-    restart: unless-stopped
+    image: carelog-io-service:latest
     build:
       context: ./io-service
       dockerfile: Dockerfile
-    volumes:
-      - ./io-service:/usr/local/apps/io-service
-      - /usr/local/apps/io-service/node_modules
     ports:
       - 5004:5004
-    command: npm run dev
+    entrypoint: ["/bin/sh", "/docker-entrypoint.sh", "npm", "run", "dev"]
     environment:
       - NODE_ENV=DEV
       - PORT=5004
-      - AWS_REGION=${AWS_REGION}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}
+    volumes:
+      - /home/andrei-cozma/Desktop/Facultate/IDP/Proiect-IDP/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+    secrets:
+      - AWS_REGION
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_S3_BUCKET_NAME
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
     networks:
-      - backend
+      carelog-net:
+        aliases:
+          - io-service
+
+  # ─── Kong API Gateway ─────────────────────────────────
+  kong:
+    image: kong:latest
+    ports:
+      - target: 8000
+        published: 8000
+        protocol: tcp
+        mode: host
+      - target: 8443
+        published: 8443
+        protocol: tcp
+        mode: host
+    environment:
+      - KONG_DATABASE=off
+      - KONG_DECLARATIVE_CONFIG=/usr/local/kong/declarative/kong.yml
+      - KONG_PROXY_ACCESS_LOG=/dev/stdout
+      - KONG_ADMIN_ACCESS_LOG=/dev/stdout
+      - KONG_PROXY_ERROR_LOG=/dev/stderr
+      - KONG_ADMIN_ERROR_LOG=/dev/stderr
+      - KONG_ADMIN_LISTEN=127.0.0.1:8001
+    volumes:
+      - /home/andrei-cozma/Desktop/Facultate/IDP/Proiect-IDP/kong.yml:/usr/local/kong/declarative/kong.yml
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      carelog-net:
+        aliases:
+          - kong
+
+  # ─── Portainer (Docker Management) ────────────────────
+  portainer:
+    image: portainer/portainer-ce:latest
+    ports:
+      - target: 9000
+        published: 9000
+        protocol: tcp
+        mode: host
+      - target: 9443
+        published: 9443
+        protocol: tcp
+        mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      carelog-net:
+        aliases:
+          - portainer
 
   # ─── Databases ─────────────────────────────────────────
   auth-db:
-    restart: unless-stopped
     image: mongo:latest
     ports:
       - 27018:27017
     volumes:
       - auth-dbdata:/data/db
     networks:
-      - backend
-      - data
+      carelog-net:
+        aliases:
+          - auth-db
 
   medical-db:
-    restart: unless-stopped
     image: mongo:latest
     ports:
       - 27019:27017
     volumes:
       - medical-dbdata:/data/db
     networks:
-      - backend
-      - data
+      carelog-net:
+        aliases:
+          - medical-db
 
 networks:
-  frontend:
-    driver: bridge
-  backend:
-    driver: bridge
-  data:
-    driver: bridge
+  carelog-net:
+    driver: overlay
+    attachable: true
 
 volumes:
   auth-dbdata:
   medical-dbdata:
+  portainer_data:
+
+secrets:
+  JWT_SECRET:
+    external: true
+  MAIL_USER:
+    external: true
+  MAIL_PASS:
+    external: true
+  AWS_REGION:
+    external: true
+  AWS_ACCESS_KEY_ID:
+    external: true
+  AWS_SECRET_ACCESS_KEY:
+    external: true
+  AWS_S3_BUCKET_NAME:
+    external: true
