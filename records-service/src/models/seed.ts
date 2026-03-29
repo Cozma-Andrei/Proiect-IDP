@@ -49,7 +49,7 @@ mongoose.set('strictQuery', true);
     }, { timestamps: false });
     const User = authConn.model('User', UserSchema);
     await User.deleteMany({ role: { $ne: 'User' } });
-    console.log('Users existenți (non-User) au fost goliti din Auth DB.');
+    console.log('Utilizatorii existenți au fost goliti din Auth DB.');
 
     const patientUsersData: any[] = [];
     const patientProfilesData: any[] = [];

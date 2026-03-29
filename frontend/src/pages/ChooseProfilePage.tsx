@@ -23,7 +23,7 @@ const ChooseProfilePage: React.FC = () => {
       <div className="w-full max-w-lg p-8 bg-white rounded-2xl shadow-lg border text-center">
         <h2 className="text-3xl font-extrabold mb-4 text-gray-800">Selectează Profilul</h2>
         <p className="text-gray-600 mb-8 text-sm">
-          Contul tău are asociate atât un profil de Doctor, cât și unul de Pacient. 
+          Contul tău are asociate mai multe profiluri. 
           Te rugăm să alegi în ce portal dorești să navighezi acum.
         </p>
 

@@ -15,42 +15,97 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-# 2. Initializare Docker Swarm
-echo -e "${GREEN}1. Initializare Docker Swarm...${NC}"
-docker swarm init 2>/dev/null || echo "Swarm este deja initializat."
+# 2. Creare Retea de Simulare
+echo -e "${GREEN}1. Creare retea de simulare (172.18.0.0/16)...${NC}"
+docker network create --subnet=172.18.0.0/16 swarm-sim-net 2>/dev/null || true
 
-# 3. Oprire Stack existent (daca exista)
-echo -e "${GREEN}2. Curatare stack anterior...${NC}"
+# 3. Initializare Docker Swarm (Manager)
+echo -e "${GREEN}2. Initializare Docker Swarm (Manager pe 172.18.0.1)...${NC}"
+# Fortam un restart curat daca Swarm-ul este deja pornit pentru a aplica noile setari de retea
+if [ "$(docker info --format '{{.Swarm.LocalNodeState}}')" == "active" ]; then
+    echo "Swarm-ul este deja activ. Resetam pentru a aplica noile adrese de date..."
+    docker swarm leave --force 2>/dev/null
+fi
+docker swarm init --advertise-addr 172.18.0.1 --data-path-addr 172.18.0.1 2>/dev/null
+
+# 4. Simulare Cluster Multi-Nod
+echo -e "${GREEN}3. Simulare Workeri Suplimentari (DinD)...${NC}"
+
+# Stergem containerele existente
+docker rm -f worker-1 worker-2 2>/dev/null
+
+# Pornim workerii in reteaua de simulare cu IP-uri fixe
+docker run -d --privileged --name worker-1 --hostname worker-1 --network swarm-sim-net --ip 172.18.0.11 docker:dind
+docker run -d --privileged --name worker-2 --hostname worker-2 --network swarm-sim-net --ip 172.18.0.12 docker:dind
+
+TOKEN=$(docker swarm join-token worker -q)
+
+echo "Asteptam pornirea engine-ului Docker pe workeri..."
+sleep 10
+docker exec worker-1 docker swarm join --token $TOKEN --advertise-addr 172.18.0.11 172.18.0.1:2377 2>/dev/null
+docker exec worker-2 docker swarm join --token $TOKEN --advertise-addr 172.18.0.12 172.18.0.1:2377 2>/dev/null
+
+echo -e "\n${BLUE}Stare Cluster Docker Swarm${NC}"
+docker node ls
+
+# 5. Oprire Stack existent
+echo -e "\n${GREEN}4. Curatare stack anterior...${NC}"
 docker stack rm carelog 2>/dev/null
-echo "Asteptam 10 secunde pentru eliberarea resurselor (retele, secrete)..."
 sleep 10
 
-# 4. Initializare Secrete (Docker Secrets)
-echo -e "${GREEN}3. Initializare Secrete Securizate...${NC}"
+# 6. Initializare Secrete
+echo -e "${GREEN}5. Initializare Secrete Securizate...${NC}"
 chmod +x init_secrets.sh
 ./init_secrets.sh
 
-# 5. Build imagini
-echo -e "${GREEN}4. Construire imagini microservicii...${NC}"
+# 7. Build imagini
+echo -e "${GREEN}6. Construire imagini microservicii...${NC}"
 docker-compose build
 
-# 6. Deploy Stack
-echo -e "${GREEN}5. Lansare Stack in Swarm (carelog)...${NC}"
+# 8. Sincronizare Imagini catre Workeri
+echo -e "${GREEN}6.1. Sincronizare imagini catre worker-1 si worker-2...${NC}"
+IMAGES=(
+    "carelog-frontend:latest"
+    "carelog-auth-service:latest"
+    "carelog-medical-service:latest"
+    "carelog-records-service:latest"
+    "carelog-io-service:latest"
+)
+
+for img in "${IMAGES[@]}"; do
+    echo "Trimitere $img catre noduri..."
+    docker save "$img" | docker exec -i worker-1 docker load > /dev/null &
+    docker save "$img" | docker exec -i worker-2 docker load > /dev/null &
+    wait
+done
+
+# 9. Deploy Stack
+echo -e "${GREEN}7. Lansare Stack in Swarm (carelog)...${NC}"
+export CONFIG_VERSION=$(date +%s)
 docker stack deploy -c docker-compose.yml carelog
 
-# 7. Asteptare servicii
-echo -e "${GREEN}6. Asteptare stabilizare servicii (30s)...${NC}"
+# 10. Asteptare servicii
+echo -e "${GREEN}8. Asteptare stabilizare servicii (30s)...${NC}"
 sleep 30
 
-# 8. Rulare Seeder
-echo -e "${GREEN}7. Populare baza de date (Seeder)...${NC}"
-CONTAINER_ID=$(docker ps -q -f name=carelog_records-service)
-if [ -z "$CONTAINER_ID" ]; then
-    echo "Eroare: Nu s-a gasit containerul records-service. Verifica 'docker service ls'."
-else
+# 11. Rulare Seeder
+echo -e "${GREEN}9. Populare baza de date (Seeder)...${NC}"
+NODE_NAME=$(docker service ps carelog_records-service --format "{{.Node}}" --filter "desired-state=running" | head -n1)
+MANAGER_HOSTNAME=$(hostname)
+
+if [ -z "$NODE_NAME" ]; then
+    echo "Eroare: Nu s-a gasit niciun container records-service activ."
+elif [ "$NODE_NAME" == "$MANAGER_HOSTNAME" ]; then
+    CONTAINER_ID=$(docker ps -q -f name=carelog_records-service)
     docker exec -it $CONTAINER_ID npm run seed
+else
+    echo "Records Service se afla pe nodul: $NODE_NAME. Rulare prin tunel..."
+    CONTAINER_ID_INSIDE=$(docker exec $NODE_NAME docker ps -q -f name=carelog_records-service)
+    docker exec -it $NODE_NAME docker exec -it $CONTAINER_ID_INSIDE npm run seed
 fi
 
 echo -e "${BLUE}Setup Finalizat cu Succes!${NC}"
 echo "Frontend: http://localhost:3000"
 echo "Portainer: http://localhost:9000"
+echo -e "\nDistributie Servicii pe Noduri:"
+docker stack ps carelog

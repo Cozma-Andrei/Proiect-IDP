@@ -19,10 +19,21 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        com.carelog.service_group: "frontend"
+        com.carelog.priority: "medium"
     networks:
-      carelog-net:
-        aliases:
-          - frontend
+      frontend-net:
 
   # ─── Auth Service (port 5001) ──────────────────────────
   auth-service:
@@ -39,18 +50,31 @@ services:
       - MONGO_URI=mongodb://auth-db:27017/careLog_auth
       - FRONTEND_URL=http://localhost:3000
       - RECORDS_SERVICE_URL=http://records-service:5003
-    volumes:
-      - /home/andrei-cozma/Desktop/Facultate/IDP/Proiect-IDP/docker-entrypoint.sh:/docker-entrypoint.sh:ro
     secrets:
       - JWT_SECRET
       - MAIL_USER
       - MAIL_PASS
+    configs:
+      - source: docker_entrypoint
+        target: /docker-entrypoint.sh
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+      labels:
+        com.carelog.service_group: "backend-auth"
     networks:
-      carelog-net:
+      frontend-net:
+        aliases:
+          - auth-service
+      backend-net:
+        aliases:
+          - auth-service
+      data-net:
         aliases:
           - auth-service
 
@@ -69,16 +93,26 @@ services:
       - RECORDS_SERVICE_URL=http://records-service:5003
       - IO_SERVICE_URL=http://io-service:5004
       - AUTH_SERVICE_URL=http://auth-service:5001
-    volumes:
-      - /home/andrei-cozma/Desktop/Facultate/IDP/Proiect-IDP/docker-entrypoint.sh:/docker-entrypoint.sh:ro
     secrets:
       - JWT_SECRET
+    configs:
+      - source: docker_entrypoint
+        target: /docker-entrypoint.sh
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+      labels:
+        com.carelog.service_group: "backend-medical"
     networks:
-      carelog-net:
+      frontend-net:
+        aliases:
+          - medical-service
+      backend-net:
         aliases:
           - medical-service
 
@@ -97,14 +131,24 @@ services:
       - MONGO_URI=mongodb://medical-db:27017/careLog_medical
       - AUTH_MONGO_URI=mongodb://auth-db:27017/careLog_auth
       - IO_SERVICE_URL=http://io-service:5004
-    volumes:
-      - /home/andrei-cozma/Desktop/Facultate/IDP/Proiect-IDP/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+    configs:
+      - source: docker_entrypoint
+        target: /docker-entrypoint.sh
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+      labels:
+        com.carelog.service_group: "backend-records"
     networks:
-      carelog-net:
+      backend-net:
+        aliases:
+          - records-service
+      data-net:
         aliases:
           - records-service
 
@@ -120,19 +164,26 @@ services:
     environment:
       - NODE_ENV=DEV
       - PORT=5004
-    volumes:
-      - /home/andrei-cozma/Desktop/Facultate/IDP/Proiect-IDP/docker-entrypoint.sh:/docker-entrypoint.sh:ro
     secrets:
       - AWS_REGION
       - AWS_ACCESS_KEY_ID
       - AWS_SECRET_ACCESS_KEY
       - AWS_S3_BUCKET_NAME
+    configs:
+      - source: docker_entrypoint
+        target: /docker-entrypoint.sh
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+      labels:
+        com.carelog.service_group: "backend-io"
     networks:
-      carelog-net:
+      backend-net:
         aliases:
           - io-service
 
@@ -156,14 +207,24 @@ services:
       - KONG_PROXY_ERROR_LOG=/dev/stderr
       - KONG_ADMIN_ERROR_LOG=/dev/stderr
       - KONG_ADMIN_LISTEN=127.0.0.1:8001
-    volumes:
-      - /home/andrei-cozma/Desktop/Facultate/IDP/Proiect-IDP/kong.yml:/usr/local/kong/declarative/kong.yml
+    configs:
+      - source: kong_config
+        target: /usr/local/kong/declarative/kong.yml
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 1024M
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        com.carelog.role: "api-gateway"
     networks:
-      carelog-net:
+      frontend-net:
         aliases:
           - kong
 
@@ -186,10 +247,17 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        com.carelog.role: "management"
     networks:
-      carelog-net:
-        aliases:
-          - portainer
+      frontend-net:
 
   # ─── Databases ─────────────────────────────────────────
   auth-db:
@@ -198,8 +266,22 @@ services:
       - 27018:27017
     volumes:
       - auth-dbdata:/data/db
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 1024M
+        reservations:
+          cpus: '0.50'
+          memory: 512M
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        com.carelog.service_group: "data"
     networks:
-      carelog-net:
+      data-net:
         aliases:
           - auth-db
 
@@ -209,15 +291,41 @@ services:
       - 27019:27017
     volumes:
       - medical-dbdata:/data/db
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 1024M
+        reservations:
+          cpus: '0.50'
+          memory: 512M
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        com.carelog.service_group: "data"
     networks:
-      carelog-net:
+      data-net:
         aliases:
           - medical-db
 
 networks:
-  carelog-net:
+  frontend-net:
     driver: overlay
     attachable: true
+    driver_opts:
+      com.docker.network.driver.mtu: 1400
+  backend-net:
+    driver: overlay
+    attachable: true
+    driver_opts:
+      com.docker.network.driver.mtu: 1400
+  data-net:
+    driver: overlay
+    attachable: true
+    driver_opts:
+      com.docker.network.driver.mtu: 1400
 
 volumes:
   auth-dbdata:
@@ -239,3 +347,11 @@ secrets:
     external: true
   AWS_S3_BUCKET_NAME:
     external: true
+
+configs:
+  docker_entrypoint:
+    name: docker_entrypoint_${CONFIG_VERSION:-1}
+    file: ./docker-entrypoint.sh
+  kong_config:
+    name: kong_config_${CONFIG_VERSION:-1}
+    file: ./kong.yml
