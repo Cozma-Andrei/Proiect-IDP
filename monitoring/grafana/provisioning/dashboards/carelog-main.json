@@ -60,7 +60,7 @@
           "datasource": { "type": "prometheus", "uid": "Prometheus" },
           "editorMode": "code",
           "expr": "time() - process_start_time_seconds{job=\"carelog-auth\"}",
-          "legendFormat": "Auth Registry",
+          "legendFormat": "Auth",
           "refId": "A"
         },
         {
