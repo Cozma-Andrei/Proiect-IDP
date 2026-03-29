@@ -1,4 +1,4 @@
-name: Build and Push CareLog Stack
+name: Build and Deploy CareLog Stack
 
 on:
   push:
@@ -54,3 +54,15 @@ jobs:
           context: ./io-service
           push: true
           tags: cozmaandrei/carelog-io-service:latest
+
+  deploy:
+    runs-on: self-hosted
+    needs: build-and-push
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Docker Swarm
+        run: |
+          export CONFIG_VERSION=$(date +%s)
+          docker stack deploy -c docker-compose.yml carelog
