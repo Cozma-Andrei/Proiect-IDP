@@ -106,6 +106,8 @@ fi
 
 echo -e "${BLUE}Setup Finalizat cu Succes!${NC}"
 echo "Frontend: http://localhost:3000"
-echo "Portainer: http://localhost:9000"
+echo "Portainer:  http://localhost:9000"
+echo "Grafana:    http://localhost:3001 (admin/admin)"
+echo "Prometheus: http://localhost:9090"
 echo -e "\nDistributie Servicii pe Noduri:"
 docker stack ps carelog

@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'carelog-auth'
+    static_configs:
+      - targets: ['auth-service:5001']
+
+  - job_name: 'carelog-medical'
+    static_configs:
+      - targets: ['medical-service:5002']
+
+  - job_name: 'carelog-records'
+    static_configs:
+      - targets: ['records-service:5003']
+
+  - job_name: 'carelog-io'
+    static_configs:
+      - targets: ['io-service:5004']
+
+  # Node Exporter can be added later for node-level metrics

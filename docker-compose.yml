@@ -77,6 +77,9 @@ services:
       data-net:
         aliases:
           - auth-service
+      monitoring-net:
+        aliases:
+          - auth-service
 
   # ─── Medical Service (port 5002) ───────────────────────
   medical-service:
@@ -115,6 +118,9 @@ services:
       backend-net:
         aliases:
           - medical-service
+      monitoring-net:
+        aliases:
+          - medical-service
 
   # ─── Records Service (port 5003) ───────────────────────
   records-service:
@@ -151,6 +157,9 @@ services:
       data-net:
         aliases:
           - records-service
+      monitoring-net:
+        aliases:
+          - records-service
 
   # ─── IO Service (port 5004) ────────────────────────────
   io-service:
@@ -184,6 +193,9 @@ services:
         com.carelog.service_group: "backend-io"
     networks:
       backend-net:
+        aliases:
+          - io-service
+      monitoring-net:
         aliases:
           - io-service
 
@@ -257,7 +269,7 @@ services:
       labels:
         com.carelog.role: "management"
     networks:
-      frontend-net:
+      monitoring-net:
 
   # ─── Databases ─────────────────────────────────────────
   auth-db:
@@ -310,6 +322,50 @@ services:
         aliases:
           - medical-db
 
+  # ─── Monitoring (Prometheus & Grafana) ─────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - 9090:9090
+    volumes:
+      - prometheus_data:/prometheus
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+    networks:
+      monitoring-net:
+        aliases:
+          - prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - target: 3000
+        published: 3001
+        protocol: tcp
+        mode: host
+    volumes:
+      - grafana_data:/var/lib/grafana
+    configs:
+      - source: grafana_datasource
+        target: /etc/grafana/provisioning/datasources/datasource.yml
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+    networks:
+      monitoring-net:
+        aliases:
+          - grafana
+
 networks:
   frontend-net:
     driver: overlay
@@ -326,11 +382,18 @@ networks:
     attachable: true
     driver_opts:
       com.docker.network.driver.mtu: 1400
+  monitoring-net:
+    driver: overlay
+    attachable: true
+    driver_opts:
+      com.docker.network.driver.mtu: 1400
 
 volumes:
   auth-dbdata:
   medical-dbdata:
   portainer_data:
+  prometheus_data:
+  grafana_data:
 
 secrets:
   JWT_SECRET:
@@ -355,3 +418,9 @@ configs:
   kong_config:
     name: kong_config_${CONFIG_VERSION:-1}
     file: ./kong.yml
+  prometheus_config:
+    name: prometheus_config_${CONFIG_VERSION:-1}
+    file: ./monitoring/prometheus/prometheus.yml
+  grafana_datasource:
+    name: grafana_datasource_${CONFIG_VERSION:-1}
+    file: ./monitoring/grafana/provisioning/datasources/datasource.yml
