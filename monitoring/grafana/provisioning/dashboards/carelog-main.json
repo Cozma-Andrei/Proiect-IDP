@@ -59,12 +59,33 @@
         {
           "datasource": { "type": "prometheus", "uid": "Prometheus" },
           "editorMode": "code",
-          "expr": "process_uptime_seconds{job=\"carelog-auth\"}",
-          "legendFormat": "Auth Uptime",
+          "expr": "time() - process_start_time_seconds{job=\"carelog-auth\"}",
+          "legendFormat": "Auth Registry",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "time() - process_start_time_seconds{job=\"carelog-medical\"}",
+          "legendFormat": "Medical",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "time() - process_start_time_seconds{job=\"carelog-records\"}",
+          "legendFormat": "Records",
+          "refId": "C"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "time() - process_start_time_seconds{job=\"carelog-io\"}",
+          "legendFormat": "IO",
+          "refId": "D"
         }
       ],
-      "title": "Auth Service Uptime",
+      "title": "Microservices Uptime",
       "type": "stat"
     },
     {
