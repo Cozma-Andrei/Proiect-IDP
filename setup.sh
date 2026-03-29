@@ -16,11 +16,11 @@ if [ ! -f .env ]; then
 fi
 
 # 2. Creare Retea de Simulare
-echo -e "${GREEN}1. Creare retea de simulare (172.18.0.0/16)...${NC}"
+echo -e "${GREEN}Creare retea de simulare (172.18.0.0/16)...${NC}"
 docker network create --subnet=172.18.0.0/16 swarm-sim-net 2>/dev/null || true
 
 # 3. Initializare Docker Swarm (Manager)
-echo -e "${GREEN}2. Initializare Docker Swarm (Manager pe 172.18.0.1)...${NC}"
+echo -e "${GREEN}Initializare Docker Swarm (Manager pe 172.18.0.1)...${NC}"
 # Fortam un restart curat daca Swarm-ul este deja pornit pentru a aplica noile setari de retea
 if [ "$(docker info --format '{{.Swarm.LocalNodeState}}')" == "active" ]; then
     echo "Swarm-ul este deja activ. Resetam pentru a aplica noile adrese de date..."
@@ -29,7 +29,7 @@ fi
 docker swarm init --advertise-addr 172.18.0.1 --data-path-addr 172.18.0.1 2>/dev/null
 
 # 4. Simulare Cluster Multi-Nod
-echo -e "${GREEN}3. Simulare Workeri Suplimentari (DinD)...${NC}"
+echo -e "${GREEN}Simulare Workeri Suplimentari (DinD)...${NC}"
 
 # Stergem containerele existente
 docker rm -f worker-1 worker-2 2>/dev/null
@@ -49,27 +49,27 @@ echo -e "\n${BLUE}Stare Cluster Docker Swarm${NC}"
 docker node ls
 
 # 5. Oprire Stack existent
-echo -e "\n${GREEN}4. Curatare stack anterior...${NC}"
+echo -e "\n${GREEN}Curatare stack anterior...${NC}"
 docker stack rm carelog 2>/dev/null
 sleep 10
 
 # 6. Initializare Secrete
-echo -e "${GREEN}5. Initializare Secrete Securizate...${NC}"
+echo -e "${GREEN}Initializare Secrete Securizate...${NC}"
 chmod +x init_secrets.sh
 ./init_secrets.sh
 
 # 7. Build imagini
-echo -e "${GREEN}6. Construire imagini microservicii...${NC}"
-docker-compose build
+echo -e "${GREEN}Construire imagini microservicii...${NC}"
+docker-compose -p carelog build
 
 # 8. Sincronizare Imagini catre Workeri
-echo -e "${GREEN}6.1. Sincronizare imagini catre worker-1 si worker-2...${NC}"
+echo -e "${GREEN}Sincronizare imagini catre worker-1 si worker-2...${NC}"
 IMAGES=(
-    "carelog-frontend:latest"
-    "carelog-auth-service:latest"
-    "carelog-medical-service:latest"
-    "carelog-records-service:latest"
-    "carelog-io-service:latest"
+    "cozmaandrei/carelog-frontend:latest"
+    "cozmaandrei/carelog-auth-service:latest"
+    "cozmaandrei/carelog-medical-service:latest"
+    "cozmaandrei/carelog-records-service:latest"
+    "cozmaandrei/carelog-io-service:latest"
 )
 
 for img in "${IMAGES[@]}"; do
@@ -80,16 +80,16 @@ for img in "${IMAGES[@]}"; do
 done
 
 # 9. Deploy Stack
-echo -e "${GREEN}7. Lansare Stack in Swarm (carelog)...${NC}"
+echo -e "${GREEN}Lansare Stack in Swarm (carelog)...${NC}"
 export CONFIG_VERSION=$(date +%s)
 docker stack deploy -c docker-compose.yml carelog
 
 # 10. Asteptare servicii
-echo -e "${GREEN}8. Asteptare stabilizare servicii (30s)...${NC}"
+echo -e "${GREEN}Asteptare stabilizare servicii (30s)...${NC}"
 sleep 30
 
 # 11. Rulare Seeder
-echo -e "${GREEN}9. Populare baza de date (Seeder)...${NC}"
+echo -e "${GREEN}Populare baza de date (Seeder)...${NC}"
 NODE_NAME=$(docker service ps carelog_records-service --format "{{.Node}}" --filter "desired-state=running" | head -n1)
 MANAGER_HOSTNAME=$(hostname)
 

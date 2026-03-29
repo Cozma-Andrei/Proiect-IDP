@@ -3,7 +3,7 @@ version: "3.8"
 services:
   # ─── Frontend ──────────────────────────────────────────
   frontend:
-    image: carelog-frontend:latest
+    image: cozmaandrei/carelog-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -37,7 +37,7 @@ services:
 
   # ─── Auth Service (port 5001) ──────────────────────────
   auth-service:
-    image: carelog-auth-service:latest
+    image: cozmaandrei/carelog-auth-service:latest
     build:
       context: ./auth-service
       dockerfile: Dockerfile
@@ -80,7 +80,7 @@ services:
 
   # ─── Medical Service (port 5002) ───────────────────────
   medical-service:
-    image: carelog-medical-service:latest
+    image: cozmaandrei/carelog-medical-service:latest
     build:
       context: ./medical-service
       dockerfile: Dockerfile
@@ -118,7 +118,7 @@ services:
 
   # ─── Records Service (port 5003) ───────────────────────
   records-service:
-    image: carelog-records-service:latest
+    image: cozmaandrei/carelog-records-service:latest
     build:
       context: ./records-service
       dockerfile: Dockerfile
@@ -154,7 +154,7 @@ services:
 
   # ─── IO Service (port 5004) ────────────────────────────
   io-service:
-    image: carelog-io-service:latest
+    image: cozmaandrei/carelog-io-service:latest
     build:
       context: ./io-service
       dockerfile: Dockerfile

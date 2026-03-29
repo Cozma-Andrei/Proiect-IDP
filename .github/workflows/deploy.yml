@@ -1,0 +1,56 @@
+name: Build and Push CareLog Stack
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Frontend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          tags: cozmaandrei/carelog-frontend:latest
+
+      - name: Build and Push Auth Service
+        uses: docker/build-push-action@v4
+        with:
+          context: ./auth-service
+          push: true
+          tags: cozmaandrei/carelog-auth-service:latest
+
+      - name: Build and Push Medical Service
+        uses: docker/build-push-action@v4
+        with:
+          context: ./medical-service
+          push: true
+          tags: cozmaandrei/carelog-medical-service:latest
+
+      - name: Build and Push Records Service
+        uses: docker/build-push-action@v4
+        with:
+          context: ./records-service
+          push: true
+          tags: cozmaandrei/carelog-records-service:latest
+
+      - name: Build and Push IO Service
+        uses: docker/build-push-action@v4
+        with:
+          context: ./io-service
+          push: true
+          tags: cozmaandrei/carelog-io-service:latest
