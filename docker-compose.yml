@@ -326,7 +326,10 @@ services:
   prometheus:
     image: prom/prometheus:latest
     ports:
-      - 9090:9090
+      - target: 9090
+        published: 9090
+        protocol: tcp
+        mode: host
     volumes:
       - prometheus_data:/prometheus
     configs:
@@ -354,6 +357,10 @@ services:
     configs:
       - source: grafana_datasource
         target: /etc/grafana/provisioning/datasources/datasource.yml
+      - source: grafana_dashboard_provider
+        target: /etc/grafana/provisioning/dashboards/dashboard.yml
+      - source: grafana_main_dashboard
+        target: /etc/grafana/provisioning/dashboards/carelog-main.json
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     deploy:
@@ -424,3 +431,9 @@ configs:
   grafana_datasource:
     name: grafana_datasource_${CONFIG_VERSION:-1}
     file: ./monitoring/grafana/provisioning/datasources/datasource.yml
+  grafana_dashboard_provider:
+    name: grafana_dashboard_provider_${CONFIG_VERSION:-1}
+    file: ./monitoring/grafana/provisioning/dashboards/dashboard.yml
+  grafana_main_dashboard:
+    name: grafana_main_dashboard_${CONFIG_VERSION:-1}
+    file: ./monitoring/grafana/provisioning/dashboards/carelog-main.json
