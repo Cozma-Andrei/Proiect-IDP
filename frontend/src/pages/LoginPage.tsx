@@ -44,8 +44,9 @@ const LoginPage: React.FC = () => {
         <h2 className="text-2xl font-bold mb-6 text-center">Autentificare</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block mb-1 text-sm font-medium">Email</label>
+            <label htmlFor="email" className="block mb-1 text-sm font-medium">Email</label>
             <input
+              id="email"
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
@@ -55,12 +56,13 @@ const LoginPage: React.FC = () => {
           </div>
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-sm font-medium">Parola</label>
-              <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline">
+              <label htmlFor="password" className="block text-sm font-medium">Parola</label>
+              <Link to="/forgot-password" id="forgot-password" className="text-sm text-blue-600 hover:underline">
                 Ai uitat parola?
               </Link>
             </div>
             <input
+              id="password"
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
