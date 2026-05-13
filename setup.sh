@@ -15,38 +15,51 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-# 2. Creare retea de simulare
-echo -e "${GREEN}Creare retea de simulare (172.18.0.0/16)...${NC}"
-docker network create --subnet=172.18.0.0/16 swarm-sim-net 2>/dev/null || true
-
-# 3. Initializare Docker Swarm (Manager)
-echo -e "${GREEN}Initializare Docker Swarm (Manager pe 172.18.0.1)...${NC}"
+# 2. Initializare Docker Swarm (Manager pe 192.168.100.1)
+echo -e "${GREEN}Initializare Docker Swarm (Manager pe 192.168.100.1)...${NC}"
 # Fortam un restart curat daca Swarm-ul este deja pornit pentru a aplica noile setari de retea
 if [ "$(docker info --format '{{.Swarm.LocalNodeState}}')" == "active" ]; then
-    echo "Swarm-ul este deja activ. Resetam pentru a aplica noile adrese de date..."
+    echo "Swarm activ deja. Resetam..."
+    docker stack rm carelog 2>/dev/null
+    sleep 5
     docker swarm leave --force 2>/dev/null
 fi
-docker swarm init --advertise-addr 172.18.0.1 --data-path-addr 172.18.0.1 2>/dev/null
+docker swarm init --advertise-addr 192.168.100.1 --data-path-addr 192.168.100.1
+
+# 3. Creare retea de simulare
+echo -e "${GREEN}Creare retea de simulare (192.168.100.0/24)...${NC}"
+docker network rm swarm-sim-net 2>/dev/null || true
+docker network create --driver bridge --subnet=192.168.100.0/24 swarm-sim-net
 
 # 4. Simulare cluster multi-nod
 echo -e "${GREEN}Simulare workeri suplimentari (DinD)...${NC}"
 
 # Stergem containerele existente
-docker rm -f worker-1 worker-2 2>/dev/null
+docker rm -f worker-1 worker-2 2>/dev/null || true
 
 # Pornim workerii in reteaua de simulare cu IP-uri fixe
-docker run -d --privileged --name worker-1 --hostname worker-1 --network swarm-sim-net --ip 172.18.0.11 docker:dind
-docker run -d --privileged --name worker-2 --hostname worker-2 --network swarm-sim-net --ip 172.18.0.12 docker:dind
+docker run -d --privileged --name worker-1 --hostname worker-1 --network swarm-sim-net --ip 192.168.100.11 docker:dind
+docker run -d --privileged --name worker-2 --hostname worker-2 --network swarm-sim-net --ip 192.168.100.12 docker:dind
 
 TOKEN=$(docker swarm join-token worker -q)
 
-echo "Asteptam pornirea engine-ului Docker pe workeri..."
-sleep 10
-docker exec worker-1 docker swarm join --token $TOKEN --advertise-addr 172.18.0.11 172.18.0.1:2377 2>/dev/null
-docker exec worker-2 docker swarm join --token $TOKEN --advertise-addr 172.18.0.12 172.18.0.1:2377 2>/dev/null
+echo "Asteptam pornirea daemon-ului Docker in workeri..."
+for worker in worker-1 worker-2; do
+    echo -n "  $worker: "
+    for i in $(seq 1 30); do
+        if docker exec "$worker" docker info > /dev/null 2>&1; then
+            echo "ready"
+            break
+        fi
+        echo -n "."
+        sleep 2
+    done
+done
 
-echo -e "\n${BLUE}Stare cluster Docker Swarm${NC}"
-docker node ls
+ADDR_1="192.168.100.11"
+ADDR_2="192.168.100.12"
+docker exec worker-1 docker swarm join --token "$TOKEN" --advertise-addr "$ADDR_1" 192.168.100.1:2377 || echo "WARN: worker-1 join failed"
+docker exec worker-2 docker swarm join --token "$TOKEN" --advertise-addr "$ADDR_2" 192.168.100.1:2377 || echo "WARN: worker-2 join failed"
 
 # 5. Oprire stack existent
 echo -e "\n${GREEN}Curatare stack anterior...${NC}"
